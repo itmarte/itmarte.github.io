@@ -5,11 +5,11 @@
 # Site
 title: Marte 的it人生
 subtitle: 'Marte 的个人博客'
-description: 'Marte 的个人博客,学习笔记,java,框架'
-keywords: 学习笔记 java 框架 spring springBoot
+description: 'Marte 的个人博客,学习笔记,java,框架,springBoot,MQ,kafka,elastic job,undertow,OAuth2,JVM'
+keywords: 学习笔记,java,框架,springBoot,MQ,kafka,elastic job,undertow,OAuth2,JVM
 author: marte
-language: ZH_CN
-timezone: 'UTC+8'
+language: zh-CN
+timezone: 'Asia/Shanghai'
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
