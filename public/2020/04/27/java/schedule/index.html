@@ -14,9 +14,9 @@
 <meta property="og:site_name" content="Marte 的it人生">
 <meta property="og:description" content="并发编程领域中定时器 相关内容经常被一些介绍并发编程书籍所遗忘，属于并发编程学习优先级较低的知识点。在JDK源码中有两种定时器实现，一种是JDK1.3引入的*Timer类，它是一种基于单线程操作的简单任务调度器，虽然存在较多设计缺陷，但仍有很多应用场景和使用案例；另一种JDK1.5引入的*ScheduledThreadPoolExecutor**类，是一种基于线程池操作的较复杂任务调度器，同时也是">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://pic1.zhimg.com/80/v2-156e3cab41f11ad251640b4286e33cd4_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/java_time_task.png">
 <meta property="og:image" content="https://pic3.zhimg.com/80/v2-3e64d663f2d599d0c7b40a7464dd0072_720w.jpg">
-<meta property="og:image" content="https://pic4.zhimg.com/80/v2-1a80040c19ea94d2d18ef6452ae64183_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/2020/04/27/java/schedule/images/getmint_20200427144736.png">
 <meta property="og:image" content="https://pic4.zhimg.com/80/v2-d0a23892cf5a8aaef780bf8f0e6f0e33_720w.jpg">
 <meta property="og:image" content="https://pic1.zhimg.com/80/v2-d72f08b8ae0fbaaa9a3da508f9e64b54_720w.jpg">
 <meta property="og:image" content="https://pic3.zhimg.com/80/v2-26395bd09d3fc3d4fd4990a3707aa34a_720w.jpg">
@@ -26,12 +26,12 @@
 <meta property="og:image" content="https://pic3.zhimg.com/80/v2-ad4c978cc45c7a22464335345f525932_720w.jpg">
 <meta property="og:image" content="https://pic3.zhimg.com/80/v2-08da55ef92a07ae0f90a07f18521bb8e_720w.jpg">
 <meta property="article:published_time" content="2020-04-27T05:47:12.000Z">
-<meta property="article:modified_time" content="2020-04-27T06:13:23.504Z">
+<meta property="article:modified_time" content="2020-04-27T06:48:21.795Z">
 <meta property="article:author" content="marte">
 <meta property="article:tag" content="java">
 <meta property="article:tag" content="schedule">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://pic1.zhimg.com/80/v2-156e3cab41f11ad251640b4286e33cd4_720w.jpg">
+<meta name="twitter:image" content="http://blob.itmarte.com/images/java_time_task.png">
   
     <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
   
@@ -131,7 +131,7 @@
 <p>任务状态</p>
 </blockquote>
 <p>定时器任务生命周期中可能处于下表所示的4种不同的状态，在给定的时刻定时器任务只能处于其中一种状态。</p>
-<p><img src="https://pic1.zhimg.com/80/v2-156e3cab41f11ad251640b4286e33cd4_720w.jpg" alt="img"></p>
+<p><img src="/images/java_time_task.png" alt="timer task"></p>
 <blockquote>
 <p>执行任务</p>
 </blockquote>
@@ -185,7 +185,7 @@
 <p>从任务队列中获取最近将要执行任务的时间复杂度为O(1)；获得指定位置任务的时间复杂度也是O(1)。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;** 获得下次执行时间最小的任务,即最小堆根结点 *&#x2F;</span><br><span class="line">TimerTask getMin() &#123; return queue[1]; &#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** 获得指定位置的任务 *&#x2F;</span><br><span class="line">TimerTask get(int i) &#123; return queue[i]; &#125;</span><br></pre></td></tr></table></figure>
 
-<p><img src="https://pic4.zhimg.com/80/v2-1a80040c19ea94d2d18ef6452ae64183_720w.jpg" alt="img"></p>
+<p><img src="images/getmint_20200427144736.png" alt="img"></p>
 <blockquote>
 <p>移除任务</p>
 </blockquote>
@@ -275,7 +275,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/04/27/java/schedule/" data-id="ck9i3kprx004bdgjadqld5lmt" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/04/27/java/schedule/" data-id="ck9i4fat9004ek0jafsajf0yt" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li></ul>

@@ -44,7 +44,7 @@ public abstract class TimerTask implements Runnable {
 
 定时器任务生命周期中可能处于下表所示的4种不同的状态，在给定的时刻定时器任务只能处于其中一种状态。
 
-![img](https://pic1.zhimg.com/80/v2-156e3cab41f11ad251640b4286e33cd4_720w.jpg)
+![timer task](/images/java_time_task.png)
 
 > 执行任务
 
@@ -247,7 +247,7 @@ TimerTask getMin() { return queue[1]; }
 TimerTask get(int i) { return queue[i]; }
 ```
 
-![img](https://pic4.zhimg.com/80/v2-1a80040c19ea94d2d18ef6452ae64183_720w.jpg)
+![img](images/getmint_20200427144736.png)
 
 > 移除任务
 
