@@ -27,6 +27,8 @@ More info: [Server](https://hexo.io/docs/server.html)
 
 ``` bash
 $ hexo generate
+# 创建layout为 `post-java` 且路径为 java/schedule 文件名为chedule
+$ hexo new post-java  -p "java/schedule" schedule
 ```
 
 More info: [Generating](https://hexo.io/docs/generating.html)
