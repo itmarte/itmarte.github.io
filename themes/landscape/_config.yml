@@ -1,8 +1,17 @@
 # Header
 menu:
-  Home: /
-  Archives: /archives
+  主页: /
+  归档: /archives
+  分类: /categories //分类
+  标签: /tags   //标签
+  关于: /about   //关于
+
+#-page: history   (时间线)
+#  directory: timeline/
+#    icon: fa-history
+
 rss: /atom.xml
+
 
 # Content
 excerpt_link: Read More
