@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>\[转\]Mysql分库分表方案 | Marte 的it人生</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一、分库分表背景  为什么分库  1.1数据库最容易产生性能瓶颈的服务组件。数据库连接数资源捉襟见肘和数据库因为表多、数据多造成的性能问题。这里以淘宝为例，在淘宝平台向共享服务体系改造的过程中，通过各个服务中心拥有各自独立数据库的方式，即采用数据库垂直分区的方式对业务数据进行分区。 1.2单一服务中心的数据访问压力也必然会达到单机数据库的承载上限，所以在进行服务化改造的同一时间段内，需要对数据库能">
+<meta property="og:type" content="article">
+<meta property="og:title" content="\[转\]Mysql分库分表方案">
+<meta property="og:url" content="http://blob.itmarte.com/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="Marte 的it人生">
+<meta property="og:description" content="一、分库分表背景  为什么分库  1.1数据库最容易产生性能瓶颈的服务组件。数据库连接数资源捉襟见肘和数据库因为表多、数据多造成的性能问题。这里以淘宝为例，在淘宝平台向共享服务体系改造的过程中，通过各个服务中心拥有各自独立数据库的方式，即采用数据库垂直分区的方式对业务数据进行分区。 1.2单一服务中心的数据访问压力也必然会达到单机数据库的承载上限，所以在进行服务化改造的同一时间段内，需要对数据库能">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-cdca1f51c4a3bef0b30221a947144bdd_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-9f56d1d058e3a87a8c6be5b58696f14b_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-c526027f5f2dae54753239d5d9bd277b_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-60336a35f872a24562326304943292b9_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-ddda0732607e2bcb365960c675e0dc71_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-c52ddb056dbd39595e7c6f5b2c4fb3b5_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-94c4670cb6b6099055a5146f1a034b9b_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-73c1d9300839c0ee560c9bfcc685d653_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-432781b10f8582f5bf192e1a050e99a1_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-373b769b0466f324fd0553f5074d1b37_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-eb03c274f799a5147abc23bb99a56b4c_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-b8854e3034ce49c2f8d652394c2328ac_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-104267f964da011318238d357f05bb6c_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-65d90f64aa52be10b9bdc1b8042e9e31_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-c431ecdd67246b4e7745d58155d4e64d_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-73771a9cec11fc86e5aa0145885b05c8_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-86d44b4b844c130414c4653f215ec149_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-fe9119746d34b5396e48eac6ecd16746_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-f9315b646c72eb17564ebc0507458b14_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-31eb992f13d3222fcfc4cd222158a702_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-26e9c6b2d131c19e25d7283f37940ae1_720w.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/v2-ae88013d0531eac5ebc96fad2e4f8594_720w.jpg">
+<meta property="article:published_time" content="2020-06-04T08:05:46.000Z">
+<meta property="article:modified_time" content="2020-06-04T07:48:16.712Z">
+<meta property="article:author" content="marte">
+<meta property="article:tag" content="数据库">
+<meta property="article:tag" content="分库分表方案">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://blob.itmarte.com/images/v2-cdca1f51c4a3bef0b30221a947144bdd_720w.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Marte 的it人生</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Marte 的个人博客</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">主页</a>
+        
+          <a class="main-nav-link" href="/archives">归档</a>
+        
+          <a class="main-nav-link" href="/categories%20/%E5%88%86%E7%B1%BB">分类</a>
+        
+          <a class="main-nav-link" href="/tags%20%20%20/%E6%A0%87%E7%AD%BE">标签</a>
+        
+          <a class="main-nav-link" href="/about%20%20%20/%E5%85%B3%E4%BA%8E">关于</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://blob.itmarte.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-sql/Mysql分库分表方案" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" class="article-date">
+  <time datetime="2020-06-04T08:05:46.000Z" itemprop="datePublished">2020-06-04</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>►<a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      \[转\]Mysql分库分表方案
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><strong>一、分库分表背景</strong></p>
+<ol>
+<li>为什么分库</li>
+</ol>
+<p>1.1数据库最容易产生性能瓶颈的服务组件。数据库连接数资源捉襟见肘和数据库因为表多、数据多造成的性能问题。这里以淘宝为例，在淘宝平台向共享服务体系改造的过程中，通过各个服务中心拥有各自独立数据库的方式，即采用数据库垂直分区的方式对业务数据进行分区。</p>
+<p>1.2单一服务中心的数据访问压力也必然会达到单机数据库的承载上限，所以在进行服务化改造的同一时间段内，需要对数据库能力做扩展的工作。</p>
+<p>1.3.单台数据库 这里以mysql为例，mysql数据库，当访问连接数过多时，就会出现‘too many connections’的错误，一般来说是访问量太大或者数据库设置的最大连接数太小的原因。Mysql默认的最大连接数为100.这个连接连接数可以修改，而mysql服务允许的最大连接数为16384.虽然可以通过连接池可以一定程序上优化连接，但是当数据量过大时，单台数据库显示已经不能支撑应用服务器的访问。所以就需要做分库，具体分库方法下面会有详细介绍。</p>
+<p>1.4 在实际的应用中，绝大部分情况都是读远大于写。Mysql提供了读写分离的机制，所有的写操作都必须对应到Master，读操作可以在 Master和Slave机器上进行，Slave与Master的结构完全一样，一个Master可以有多个Slave,甚至Slave下还可以挂 Slave,通过此方式可以有效的提高DB集群的 QPS.</p>
+<p>所有的写操作都是先在Master上操作，然后同步更新到Slave上，所以从Master同步到Slave机器有一定的延迟，当系统很繁忙的时候，延迟问题会更加严重，Slave机器数量的增加也会使这个问题更加严重。</p>
+<p>此外，可以看出Master是集群的瓶颈，当写操作过多，会严重影响到Master的稳定性，如果Master挂掉，整个集群都将不能正常工作。</p>
+<p>所以</p>
+<p>\1. 当读压力很大的时候，可以考虑添加Slave机器的分式解决，但是当Slave机器达到一定的数量就得考虑分库了。</p>
+<p>\2. 当写压力很大的时候，就必须得进行分库操作。</p>
+<p>2.为什么分表</p>
+<p>有一组数据可以参考：</p>
+<p>基本指标:</p>
+<p>库物理文件大小&lt;100G</p>
+<p>表&lt;100</p>
+<p>字段&lt;200</p>
+<p>单表记录数&lt;500W</p>
+<p>经测试在单表1000万条记录一下,写入读取性能是比较好的. 这样在留点buffer,那么单表全是数字类型的保持在800万条记录以下, 有字符型的单表保持在500万以下.如果按 100库100表来规划,如用户业务:</p>
+<p>500万<em>100</em>100 = 50000000万 = 5000亿记录.供参考,具体按按业务做规划.</p>
+<p>3.什么是分区</p>
+<p>分表是将一张表分成N多个小表，分区是把一张表的数据分成N多个区块，这些区块可以在同一个磁盘上，也可以在不同的磁盘上。mysql的分表是真正的分表，一张表分成很多表后，每一个小表都是完正的一张表，都对应三个文件，一个.MYD数据文件，.MYI索引文件，.frm表结构文件。</p>
+<p><strong>二、现状</strong></p>
+<p>2.1淘宝的解决方案</p>
+<p>首先是实施的是数据库的读写分离。读写分离的基本原理是让主数据库处理事务性增、改、删（Insert、update、delete）操作，而从数据库专门负责处理查询（select）操作，在数据库的后台会把事务性操作导致的主数据库中的数据变更同步到集群中的从数据库。</p>
+<p><img src="/images/v2-cdca1f51c4a3bef0b30221a947144bdd_720w.jpg" alt="img"></p>
+<p>采用读写分离的方式，拓展了数据库对数据读的处理能力，整体上也大大提升了数据库的读写能力。但是这样的架构在主数据库的数据写入能力依然没法扩展，一旦数据库写压力比较大时，则对整个平台带来非常大的影响。而且数据库单表的数据量是有限制的，当单表数据量达到一定数量后数据库性能会出现显著下降的情况，所以简单的读写分离不能满足淘宝的发展的要求。</p>
+<p>为了更好的在数据库层面支持好淘宝的业务，在2008年，阿里巴巴内部开始了分布式数据库的研发工作，相关的平台和工具陆续登上了淘宝技术发展史的历史舞台。</p>
+<p>2006年阿里巴巴以开源的形式研发了Cobar这一关系型数据库的分布式处理系统。当时Cobar平均每天处理近50亿次的SQL操作，但是随着阿里巴巴业务场景越来越复杂，有以下缺点：</p>
+<ol>
+<li>不支持跨库情况下的连接、分页、排序、子查询</li>
+<li>SET语句执行会被忽略，处理事务和字符集设置除外。</li>
+<li>分库情况下，insert语句必须包含拆分字段列名</li>
+<li>分库情况下，update语句不能更新拆分字段的值</li>
+<li>不支持SAVEPOINT操作</li>
+<li>使用JBDC时，不支持rewriteBatchStatements = true参数设置</li>
+</ol>
+<p>等</p>
+<p>2008年内部 在Cobar的基础上重新研发了分布式数据层框架TDDL（外号头都大了）</p>
+<p><img src="/images/v2-9f56d1d058e3a87a8c6be5b58696f14b_720w.jpg" alt="img"></p>
+<p><img src="/images/v2-c526027f5f2dae54753239d5d9bd277b_720w.jpg" alt="img"></p>
+<p>TDDL提供了以下优点：</p>
+<ol>
+<li>数据库主备和动态切换</li>
+<li>带权重的读写分离</li>
+<li>单线程读重试</li>
+<li>集中式数据源信息管理和动态变更</li>
+<li>支持MySQL和Oracle数据库</li>
+<li>基于JDBC规范，很容易扩展支持实现JDBC规范的数据源</li>
+<li>无Server、client-jar形式存在，应用直连数据库</li>
+<li>读写次数，并发度流程控制，动态变更</li>
+<li>可分析的日志打印，日志流控，动态变更。</li>
+</ol>
+<p>阿里巴巴分库分表的几个原则：</p>
+<ol>
+<li>数据尽可能的平均拆分</li>
+<li>尽可能的减少事务边界 所谓的事务边界 指单个SQL语句在后端数据库上同时执行的数量。因为事务边界越大，系统的锁冲突概率就越高，系统越难以扩展，整体性能越低。</li>
+<li>异构索引表尽量降低全表扫描频率 这个是针对假如数据是按订单id进行分拆，当用户想查看自己的订单时，针对这种场景，常采用异构索引表来解决，即采用异步机制将原表内的每一次创建或更新，都换另一个维度保存一份完整的数据表或索引表。本质上这是互联网公司很多时候采用的一个解决思路：拿空间换时间 。</li>
+</ol>
+<p><img src="/images/v2-60336a35f872a24562326304943292b9_720w.jpg" alt="img"></p>
+<p>实现异构索引的方式，也就是阿里巴巴内部目前采用的方式 ，通过一填名为精卫填海的产品实现了数据的异构复制。</p>
+<ol>
+<li>将多条件频繁查询引入搜索引擎平台 比如Iucene、Solr、ElasticSearch等搜索引擎。</li>
+</ol>
+<p>总结</p>
+<p>从系统的风险的角度考虑，以82法则，在实际中，我们仅针对那些在80%情况下访问的那20%的场景进行如数据异构索引这样的处理，达到这类场景的性能最优化，而以其他80%偶尔出现跨库join、全表扫描的场景，采用最为简单直接的方式往往是最有效的方式。</p>
+<p>2.2美团的解决方案</p>
+<p>通常有两种方案。第一种方案是直接对现有的商品库进行垂直拆分，可以缓解目前写峰值QPS过大、DB主从延迟的问题。第二种方案是对现有的商品库大表进行分库分表，从根本上解决现有问题。方案一实施起来周期较短，但只能解决一时之痛，由此可见，分库分表是必然的。</p>
+<p>在确定分库分表的方案之后，调研了外卖订单、结算以及主站等业务的分库分表实现方案，也调研了业界很多分库分表中间件。在综合考虑性能、稳定性及实现成本的前提下，最终决定自主研发客户端分库分表中间件MTDDL来支撑外卖商品分库分表项目，这也就是MTDDL的由来。</p>
+<p>在MTDDL的设计研发过程中，我们充分考虑了MTDDL的通用性、可扩展性、功能的全面性和接入的便利性。到目前为止一共开发了四期，实现了MySQL动态数据源、读写分离、分布式唯一主键生成器、分库分表、连接池及SQL监控、动态化配置等一系列功能，支持分库分表算法、分布式唯一主键生成算法的高可扩展性，而且支持全注解的方式接入，业务方不需要引入任何配置文件。</p>
+<p><img src="/images/v2-ddda0732607e2bcb365960c675e0dc71_720w.jpg" alt="img"></p>
+<p>分布式唯一主键生成器</p>
+<p>众所周知，分库分表首先要解决的就是分布式唯一主键的问题，业界也有很多相关方案（大众点评用的是时间戳+用户标识码+随机数）：</p>
+<p><img src="/images/v2-c52ddb056dbd39595e7c6f5b2c4fb3b5_720w.jpg" alt="img"></p>
+<p>综上，方案3的缺点可以通过一些手段避免，但其他方案的缺点不好处理，所以选择第3种方案。目前该方案已由美团点评技术工程部实现——分布式ID生成系统Leaf，MTDDL集成了此功能。</p>
+<p>美团分库分表流程</p>
+<p><img src="/images/v2-94c4670cb6b6099055a5146f1a034b9b_720w.jpg" alt="img"></p>
+<p>分库分表取模算法：</p>
+<p>分库分表目前默认使用的是取模算法，分表算法为 (#shard_key % (group_shard_num * table_shard_num))，分库算法为 (#shard_key % (group_shard_num * table_shard_num)) / table_shard_num，其中group_shard_num为分库个数，table_shard_num为每个库的分表个数。</p>
+<p>例如把一张大表分成100张小表然后散到2个库，则0-49落在第一个库、50-99落在第二个库。核心实现如下：</p>
+<p><img src="/images/v2-73c1d9300839c0ee560c9bfcc685d653_720w.jpg" alt="img"></p>
+<p>大众点评订单表早已超过200G，由于查询维度较多，即使加了两个从库，优化索引，仍然存在很多查询不理想的情况。</p>
+<p>先对订单库进行垂直切分，将原有的订单库分为基础订单库、订单流程库等。</p>
+<p><img src="/images/v2-432781b10f8582f5bf192e1a050e99a1_720w.jpg" alt="img"></p>
+<p>垂直切分缓解了原来单集群的压力，但是在抢购时仍然捉襟见肘。原有的订单模型已经无法满足业务需求，于是我们设计了一套新的统一订单模型，为同时满足C端用户、B端商户、客服、运营等的需求，我们分别通过用户ID和商户ID进行切分，并通过PUMA（我们内部开发的MySQL binlog实时解析服务）同步到一个运营库。</p>
+<p><img src="/images/v2-373b769b0466f324fd0553f5074d1b37_720w.jpg" alt="img"></p>
+<p>切分策略</p>
+<ol>
+<li>查询切分</li>
+</ol>
+<p>将ID和库的Mapping关系记录在一个单独的库中。</p>
+<p><img src="/images/v2-eb03c274f799a5147abc23bb99a56b4c_720w.jpg" alt="img"></p>
+<p>优点：ID和库的Mapping算法可以随意更改</p>
+<p>缺点：引入额外的单点</p>
+<ol>
+<li>范围切分</li>
+</ol>
+<p>比如按照时间区间或ID区间来切分</p>
+<p><img src="/images/v2-b8854e3034ce49c2f8d652394c2328ac_720w.jpg" alt="img"></p>
+<p>优点：单表大小可控，天然水平扩展</p>
+<p>缺点：无法解决集中写入瓶颈的问题</p>
+<ol>
+<li>hash切分</li>
+</ol>
+<p>一般采用Mod来切分，下面着重讲一下Mod的策略</p>
+<p><img src="/images/v2-104267f964da011318238d357f05bb6c_720w.jpg" alt="img"></p>
+<p>数据水平切分后我们希望是一劳永逸或者易于水平扩展的，所以推荐mod2^n这种一致性Hash</p>
+<p>以统一订单库为例，我们分库分表的方案是32*32的，即通过UserId后四位mod32到32个库中，同时再将UserId后四位Div 32 Mod 32将每个库分为32个表，共计分为1024个表。线上部署情况为8个集群（主从），每个集群4个库。为什么说这种方式易于水平扩展呢？</p>
+<p>分析两种场景。</p>
+<p>场景一：数据库性能达到瓶颈</p>
+<p>方法一</p>
+<p>按照现有规则不变，可以直接扩展到32个数据库集群。</p>
+<p><img src="/images/v2-65d90f64aa52be10b9bdc1b8042e9e31_720w.jpg" alt="img"></p>
+<p>方法二</p>
+<p>如果32个集群也无法满足需求，那么将分库分表规则调整为（32<em>2^n）</em>(32/2^n)可以达到最多1024个集群。</p>
+<p>场景二：单表容量达瓶颈（或者1024已经无法满足）</p>
+<p>方法：</p>
+<p><img src="/images/v2-c431ecdd67246b4e7745d58155d4e64d_720w.jpg" alt="img"></p>
+<p>假如单表都已突破200G,200<em>1024=200T（按照现有的订单模型算了算，大概1000万亿订单），32</em>（32*2^n），这时分库规则不变，单库里的表再进行裂变，当然目前的订单规则下（userId后四位mod）还是有极限的。因为只有四位，所以最多拆8192个表。</p>
+<p>唯一ID方案</p>
+<p>这个方案也有很多种，主流的有那么几种：</p>
+<ol>
+<li>利用数据库自增ID</li>
+</ol>
+<p>优点：最简单。缺点：单点风险，单机性能瓶颈。</p>
+<p>\2. 利用数据库集群并设置相应的步长（Flickr方案）</p>
+<p>优点：高可用、ID较简洁。 缺点：需要单独的数据库集群。</p>
+<p>\3. Twitter Snowflake</p>
+<p>优点：高性能高可用、易拓展。 缺点：需要独立的集群以及ZK。</p>
+<p>\4. 一大波GUID、Random算法</p>
+<p>优点：简单。 缺点：生成ID较长，有重复几率。</p>
+<p>美团的方案：为了减少运营成本并减少额外的风险，排除了所有需要独立集群的方案，采用带有业务属性的议案： 时间戳+用户标识码+随机数</p>
+<p>有以下几个好处：</p>
+<p>1.方便、成本低。</p>
+<p>2.基本无重复的可能。</p>
+<p>3.自带分库规则，这里的用户标识码即为用户ID的后四位，在查询的场景下，只需要订单号就可以匹配到相应的库表而无需用户ID，只取四位是希望订单号尽可能的短一些，并且评估下来四位已经足够。</p>
+<p>4.可排序，因为时间戳在最前面。</p>
+<p>其他问题</p>
+<p>事务支持：我们是将整个订单领域聚合体切分，维度一致，所以对聚合体的事务是支持的。</p>
+<p>复杂查询：垂直切分后，就跟join说拜拜了；水平切分后，查询的条件一定要在切分的维度内，比如查询具体某个用户下的各位订单等；禁止不带切分的维度的查询，即使中间件可以支持这种查询，可以在内存中组装，但是这种需求往往不应该在在线库查询，或者可以通过其他方法转换到切分的维度来实现。</p>
+<p>数据迁移</p>
+<p>数据库拆分一般是业务发展到一定规模之后的优化和重构，为了支持业务快速上线，很难一开始就分库分表，垂直拆分还好办，改改数据源就搞定了，一旦开始水平拆分，数据清洗是一个大问题。为此，经历了以下几个阶段。</p>
+<p>第一阶段：</p>
+<p><img src="/images/v2-73771a9cec11fc86e5aa0145885b05c8_720w.jpg" alt="img"></p>
+<p>数据库双写（事务成功以老模型为准），查询走老模型</p>
+<p>每日job数据对账（通过DW），并将差异补平</p>
+<p>通过job导历史数据</p>
+<p>第二阶段</p>
+<p><img src="/images/v2-86d44b4b844c130414c4653f215ec149_720w.jpg" alt="img"></p>
+<p>历史数据导入完毕并且数据对账无误</p>
+<p>依然是数据库双写，但是事务成功与否以新模型为准，在线查询切换新模型</p>
+<p>每日job数据对账，将差异补平</p>
+<p>第三阶段</p>
+<p><img src="/images/v2-fe9119746d34b5396e48eac6ecd16746_720w.jpg" alt="img"></p>
+<p>老模型不同同步写入，仅当订单有终态时才会异步补上。</p>
+<p>此阶段只有离线数据依然依赖老的模型，并且下游的依赖非常多，待DW改造完就可以完全废除老模型了。</p>
+<p>总结</p>
+<p>1.并非所有表都需要水平拆分，要看增长的类型和速度，水平拆分是大招，拆分后会增加开发的复杂度，不到万不得已不使用。</p>
+<p>2.在大规模并发的业务上，尽量做到在线查询和离线查询隔离，交易查询和运营/客服查询隔离。</p>
+<p>3.拆分维度的选择很重要，要尽可能在解决拆分前问题的基础上，便于开发。</p>
+<p>4.数据库没你想象的那么坚强，需要保护，尽量使用简单的、良好索引的查询，这样数据库整体可控，也易于长期容量规划以及水平扩展。</p>
+<p><strong>三、分库方案</strong></p>
+<p>3.1垂直切分</p>
+<p>按业务切分，将表按照功能模块、关系密切程度划分出来，部署到不同的库上。例如用户相关、教务相关、cc业务相关、报表相关等。</p>
+<p>3.2水平切分</p>
+<p>当一个表中的数据量过大时，我们可以把该表的数据按照某种规则，例如userID散列，进行划分，然后存储到多个结构相同的表，和不同的库上。例如，我们的userDB中的用户数据表中，每一个表的数据量都很大，就可以把userDB切分为结构相同的多个userDB：part0DB、part1DB等，再将userDB上的用户数据表userTable，切分为很多userTable：userTable0、userTable1等，然后将这些表按照一定的规则存储到多个userDB上。</p>
+<p>3.3切分的选择</p>
+<p>应该使用哪一种方式来实施数据库分库分表，这要看数据库中数据量的瓶颈所在，并综合项目的业务类型进行考虑。</p>
+<p>如果数据库是因为表太多而造成海量数据，并且项目的各项业务逻辑划分清晰、低耦合，那么规则简单明了、容易实施的垂直切分必是首选。而如果数据库中的表并不多，但单表的数据量很大、或数据热度很高，这种情况之下就应该选择水平切分，水平切分比垂直切分要复杂一些，它将原本逻辑上属于一体的数据进行了物理分割，除了在分割时要对分割的粒度做好评估，考虑数据平均和负载平均，后期也将对项目人员及应用程序产生额外的数据管理负担。</p>
+<p>在现实项目中，往往是这两种情况兼而有之，这就需要做出权衡，甚至既需要垂直切分，又需要水平切分。</p>
+<p><strong>四、分表方案</strong></p>
+<p>4.1利用数据库的merge存储引擎来实现分表</p>
+<p>优势：不用改代码。</p>
+<p>缺点：有一些限制，必须是MyISAM存储引擎，分表的id不能是自增的，每个分表的表结构必须相同，Mysql必须具有存储分一数据文件和索引文件的目录的读写权限，必须启用mysql的符号链接支持功能。</p>
+<p>4.2垂直切分</p>
+<p>垂直拆分是根据数据库里面的数据表的相关性进行拆分，比如：一个数据库里面既存在用户数据，又存在订单数据，那么垂直拆分可以把用户数据放入到用户库，把订单数据放到订单库。垂直分表是对数据表进行垂直拆分的一种方式，常见是把一个多字段的大表按常用字段和非常用字段进行拆分，每个表里面的数据记录数一般情况下是相同的，只是字段不一样，使用主键关联。</p>
+<p>比如原始用户表是：</p>
+<p><img src="/images/v2-f9315b646c72eb17564ebc0507458b14_720w.jpg" alt="img"></p>
+<p>垂直拆分后的表是：</p>
+<p><img src="/images/v2-31eb992f13d3222fcfc4cd222158a702_720w.jpg" alt="img"></p>
+<p>垂直拆分的优点是：</p>
+<p>\1. 可以使得数据变小，一个数据块（block）就能存放更多的数据，在查询时就会减少I/O次数（每次查询时读取的Block就少）</p>
+<p>\2. 可以达到最大化利用Cache的目的，具体在垂直拆分的时候可以将不常变的字段放一起，将经常改变的放一起</p>
+<p>\3. 数据维护简单</p>
+<p>缺点是：</p>
+<p>1.主键出现冗余，需要管理冗余例</p>
+<p>2.会引起表连接JOIN操作(增加CPU开销)可以通过在业务服务器上进行join来减少数据库压力</p>
+<p>3.依然存在单表数据量过大的问题(需要水平拆分)</p>
+<p>4.事务处理复杂</p>
+<p>4.3 水平切分</p>
+<p>4.3.1按照订单号做Hash分散订单数据</p>
+<p>把订单号看作是一个字符串，做hash，分散到多个服务器。具体分到哪个库、哪个表存储数据，订单号的数字来记录。以微信红包为例：订单分库分表，是对订单号进行hash计算。然后订单的末尾3个数包含了库名称、表名称。如：可参考美团的方法。</p>
+<p>那么如何查询某用户的所有订单呢？由于根据订单号来分散数据的，他们的订单分散在了多个库、多个表中。</p>
+<p>建异构索引表</p>
+<p>同样如何应付多维度的检索，例如所有订单的分页、订单状态检索、根据促销维度检索等</p>
+<p>做数据冗余、存储多份。或者用ES来处理</p>
+<p>4.3.2按照用户id来切分</p>
+<p>按照用户来切分数据有两种思路：</p>
+<p>一种方案是某个范围的uid订单到哪些库。例如0到2000w uid对应订单数据到a库，2000w到4000w对应订单到b库。</p>
+<p>缺点：某个范围内的用户，下单量比较多，那么造成这个库的压力特别大，数据分布极为不均衡。</p>
+<p>优点：查询指定用户的所有订单，避免了跨库跨表查询。因为用户的id是规定不变的，那么计算出的值永远是固定的某库某表。那么a用户的所有订单都是在某库某表里面。</p>
+<p>第二种方案是使用uid取模运算，第二种方案业界用的比较多。</p>
+<p>具体实现如下：</p>
+<p>按照用户id作为key来切分订单数据，具体如下：</p>
+<p>1、 库名称定位：用户id末尾4位 Mod 32。</p>
+<p>Mod表示除以一个数后，取余下的数。比如除以32后，余下8，余数就是8。</p>
+<p>代码符号是用%表示：15%4=3。</p>
+<p>2、表名称定位：（用户id末尾4位 Dev 32） Mod 32。</p>
+<p>Dev表示除以一个数，取结果的整数。比如得到结果是25.6，取整就是25。</p>
+<p>代码用/来表示：$get_int = floor(15/4)。15除以4，是一个小数3.75，向下取整就是3。一定是向下取整，向上取整就变成了4了。</p>
+<p>按照上面的规则：总共可以表示多少张表呢？32个库*每个库32个表=1024张表。如果想表的数量小，就把32改小一些。</p>
+<p>上面是用计算机术语来表示， 下面用通俗的话描述。</p>
+<p>1、库名称计算</p>
+<p>用户id的后4位数，取32的模(取模就是除以这个数后，余多少)。余下的数，是0-31之间。</p>
+<p>这样可以表示从0-31之间，总共32个数字。用这个32个数字代表着32个库名称：order_db_0、order_db_2…………………….order_db_31</p>
+<p>2、表名称计算</p>
+<p>最后要存储定到哪个表名里面去呢？</p>
+<p>用户id的最后4位数，除以32，取整数。将整数除以32，得到余数，能够表示从0-31之间32个数字，表示表名称。</p>
+<p>表名称类似这样：order_tb_1、order_tb_2……………………..order_tb_31。一个库里面，总共32个表名称。</p>
+<p>比如用户id：19408064，用最后4位数字8064除以32，得到是251.9，取它的整数是251。</p>
+<p>接着将251除以32，取余数，余数为27。</p>
+<p>为了保持性能，每张表的数据量要控制。单表可以维持在一千万-5千万行的数据。1024*一千万。这个已经是很大的数据量了。</p>
+<p>4.3.4按订单的时间来分表</p>
+<p>一个月一张，一年一张表，用户的所有订单，会分散在不同的库、不同的表中。这个可以根据实际的应用场景来使用。适合于经常只查询某一时间段的数据。因为这个种分表方法会有几个缺点，如果查询某个用户所有订单数据，就会出现跨库、跨表，效率会低。</p>
+<p>4.4 阿里云的RDS分库分表方案。DRDS（Distributed Relational Database Service，分布式关系型数据库服务 ）是阿里巴巴自主研发，致力于解决单机数据库瓶颈而推出的分布式数据库中间件产品。DRDS高度兼容Mysql协议和语法，支持水平拆分、平滑扩容、弹性扩展、透明读写分离和分布式事务等特性，具备分布式数据库全生命周期的运维管控能力。</p>
+<p><img src="/images/v2-26e9c6b2d131c19e25d7283f37940ae1_720w.jpg" alt="img"></p>
+<p>DRDS 支持库级拆分、表级拆分和分库分表拆分。拆分键暂时只支持单个字段。<br>分库键：DRDS 根据分库键的值将数据水平拆分到后端的每一个 RDS 分库里。键值相同的数据，一定会位于同一个 RDS 数据库里。<br>分表键：每一张逻辑表都可以定义自己的分表键，键值相同的数据，一定会位于同一个 RDS 数据表里。</p>
+<p><img src="/images/v2-ae88013d0531eac5ebc96fad2e4f8594_720w.jpg" alt="img"></p>
+<p>网上数据：贝聊大概有几万所幼儿园，上亿数据量，效果比较 ：</p>
+<p>1、 性能大幅度提升<br>响应速度提升5至10倍，以当时获取班级动态列表接口为例：<br>分库分表实施前：响应时间大致为200ms至1500ms级之间。<br>分库分表实施后：响应时间提升至大致为30ms至300ms之间。<br>2、 可方便快速进行横向扩容<br>如果需要扩容，直接按照阿里云DRDS指引，增加新的分库即可。<br>3、 架构的优化<br>独立动态业务，通过Dubbo提供服务，对系统进行解耦，让业务具备快速横向扩容能力。<br>4、后遗症<br>独立后，暂时没有做分布式事务，在业务中需要避免跨库事务。</p>
+<ol>
+<li>分库分表存在的问题及解决方案</li>
+<li>事务问题</li>
+</ol>
+<p>在执行分库分表之后，由于数据存储到了不同的库上，数据库事务管理出现了困难。如果依赖数据库本身的分布式事务管理功能去执行事务，将付出高昂的性能代价；如果由应用程序去协助控制，形成程序逻辑上的事务，又会造成编程方面的负担。</p>
+<ol>
+<li>跨库跨表join问题</li>
+</ol>
+<p>在执行了分库分表之后，难以避免会将原本逻辑关联性很强的数据划分到不同的表、不同的库上，这时，表的关联操作将受到限制，我们无法join位于不同分库的表，也无法join分表粒度不同的表，结果原本一次查询能够完成的业务，可能需要多次查询才能完成。</p>
+<p>解决方法：建立异构索引表。以此为例，建立用户id与订单号的索引关系表。</p>
+<p>例如：假设是以订单号分散订单数据。需求是查询某个用户的所有订单。如果知道某个用户的所有订单。那么就可以根据订单号定位到表名称。假设是以用户id分散订单数据的，那么我们只要知道这个订单号是谁的（得到了用户id）,就知道去哪个库、哪个表查询数据了。</p>
+<p>索引表里包括两项：订单号、用户编号。当数据量越来越大时，索引表也不能用单个表存储了，也需要分库分表了，因为关系一一对应，不会变化，所以也可以存在redis里。这样速度就比较快了。</p>
+<p>五、总结</p>
+<p>根据公司的adu来看，包括与美团淘宝的比较而言，可以通过业务来分库，并不是一定要做以id取模来分库，否则要更改的东西比较 大。另外分表的话可以水平和垂直混用，包括适当的场景用ES.而具体实施的时候参美团的三个步骤执行，先老库旧库时间使用，然后监控情况，待新库稳定之后再切到新库。另外以于一些开源的工具可以参考使用。如果按业务进行拆分的话，像报表统计相关的可以分离，教研相关业务独立拆分，用户相关、权限管理可独立拆分成一个模块，小程序相关独立拆分，cc业务独立拆分，订单业务独立拆分、app相关独立拆分、市场推广独立拆分。原则是高聚合，低耦合。具体根据公司的实际应用场景再有所调整。</p>
+<p>文献</p>
+<p>企业IT架构转型之道 阿里巴巴中台战略思想与架构实践 钟华</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" data-id="ckb0hfaq60058i0ja87y6bney" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">MySQL索引使用的数据结构：B-Tree和B+Tree</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 13.33px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/fork-join/" style="font-size: 13.33px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 13.33px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 13.33px;">memory</a> <a href="/tags/nio/" style="font-size: 13.33px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 16.67px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 13.33px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 13.33px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 10px;">分布式与微服务</a> <a href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" style="font-size: 10px;">分库分表方案</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 16.67px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 13.33px;">项目</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">\[转\]Mysql分库分表方案</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">MySQL索引使用的数据结构：B-Tree和B+Tree</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/">project/热点账户</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/">JVM 垃圾回收</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/java-memory/">Java 内存区域</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 marte<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">主页</a>
+  
+    <a href="/archives" class="mobile-nav-link">归档</a>
+  
+    <a href="/categories%20/%E5%88%86%E7%B1%BB" class="mobile-nav-link">分类</a>
+  
+    <a href="/tags%20%20%20/%E6%A0%87%E7%AD%BE" class="mobile-nav-link">标签</a>
+  
+    <a href="/about%20%20%20/%E5%85%B3%E4%BA%8E" class="mobile-nav-link">关于</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

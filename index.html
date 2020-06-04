@@ -86,6 +86,296 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-sql/Mysql分库分表方案" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" class="article-date">
+  <time datetime="2020-06-04T08:05:46.000Z" itemprop="datePublished">2020-06-04</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>►<a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">\[转\]Mysql分库分表方案</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><strong>一、分库分表背景</strong></p>
+<ol>
+<li>为什么分库</li>
+</ol>
+<p>1.1数据库最容易产生性能瓶颈的服务组件。数据库连接数资源捉襟见肘和数据库因为表多、数据多造成的性能问题。这里以淘宝为例，在淘宝平台向共享服务体系改造的过程中，通过各个服务中心拥有各自独立数据库的方式，即采用数据库垂直分区的方式对业务数据进行分区。</p>
+<p>1.2单一服务中心的数据访问压力也必然会达到单机数据库的承载上限，所以在进行服务化改造的同一时间段内，需要对数据库能力做扩展的工作。</p>
+<p>1.3.单台数据库 这里以mysql为例，mysql数据库，当访问连接数过多时，就会出现‘too many connections’的错误，一般来说是访问量太大或者数据库设置的最大连接数太小的原因。Mysql默认的最大连接数为100.这个连接连接数可以修改，而mysql服务允许的最大连接数为16384.虽然可以通过连接池可以一定程序上优化连接，但是当数据量过大时，单台数据库显示已经不能支撑应用服务器的访问。所以就需要做分库，具体分库方法下面会有详细介绍。</p>
+<p>1.4 在实际的应用中，绝大部分情况都是读远大于写。Mysql提供了读写分离的机制，所有的写操作都必须对应到Master，读操作可以在 Master和Slave机器上进行，Slave与Master的结构完全一样，一个Master可以有多个Slave,甚至Slave下还可以挂 Slave,通过此方式可以有效的提高DB集群的 QPS.</p>
+<p>所有的写操作都是先在Master上操作，然后同步更新到Slave上，所以从Master同步到Slave机器有一定的延迟，当系统很繁忙的时候，延迟问题会更加严重，Slave机器数量的增加也会使这个问题更加严重。</p>
+<p>此外，可以看出Master是集群的瓶颈，当写操作过多，会严重影响到Master的稳定性，如果Master挂掉，整个集群都将不能正常工作。</p>
+<p>所以</p>
+<p>\1. 当读压力很大的时候，可以考虑添加Slave机器的分式解决，但是当Slave机器达到一定的数量就得考虑分库了。</p>
+<p>\2. 当写压力很大的时候，就必须得进行分库操作。</p>
+<p>2.为什么分表</p>
+<p>有一组数据可以参考：</p>
+<p>基本指标:</p>
+<p>库物理文件大小&lt;100G</p>
+<p>表&lt;100</p>
+<p>字段&lt;200</p>
+<p>单表记录数&lt;500W</p>
+<p>经测试在单表1000万条记录一下,写入读取性能是比较好的. 这样在留点buffer,那么单表全是数字类型的保持在800万条记录以下, 有字符型的单表保持在500万以下.如果按 100库100表来规划,如用户业务:</p>
+<p>500万<em>100</em>100 = 50000000万 = 5000亿记录.供参考,具体按按业务做规划.</p>
+<p>3.什么是分区</p>
+<p>分表是将一张表分成N多个小表，分区是把一张表的数据分成N多个区块，这些区块可以在同一个磁盘上，也可以在不同的磁盘上。mysql的分表是真正的分表，一张表分成很多表后，每一个小表都是完正的一张表，都对应三个文件，一个.MYD数据文件，.MYI索引文件，.frm表结构文件。</p>
+<p><strong>二、现状</strong></p>
+<p>2.1淘宝的解决方案</p>
+<p>首先是实施的是数据库的读写分离。读写分离的基本原理是让主数据库处理事务性增、改、删（Insert、update、delete）操作，而从数据库专门负责处理查询（select）操作，在数据库的后台会把事务性操作导致的主数据库中的数据变更同步到集群中的从数据库。</p>
+<p><img src="/images/v2-cdca1f51c4a3bef0b30221a947144bdd_720w.jpg" alt="img"></p>
+<p>采用读写分离的方式，拓展了数据库对数据读的处理能力，整体上也大大提升了数据库的读写能力。但是这样的架构在主数据库的数据写入能力依然没法扩展，一旦数据库写压力比较大时，则对整个平台带来非常大的影响。而且数据库单表的数据量是有限制的，当单表数据量达到一定数量后数据库性能会出现显著下降的情况，所以简单的读写分离不能满足淘宝的发展的要求。</p>
+<p>为了更好的在数据库层面支持好淘宝的业务，在2008年，阿里巴巴内部开始了分布式数据库的研发工作，相关的平台和工具陆续登上了淘宝技术发展史的历史舞台。</p>
+<p>2006年阿里巴巴以开源的形式研发了Cobar这一关系型数据库的分布式处理系统。当时Cobar平均每天处理近50亿次的SQL操作，但是随着阿里巴巴业务场景越来越复杂，有以下缺点：</p>
+<ol>
+<li>不支持跨库情况下的连接、分页、排序、子查询</li>
+<li>SET语句执行会被忽略，处理事务和字符集设置除外。</li>
+<li>分库情况下，insert语句必须包含拆分字段列名</li>
+<li>分库情况下，update语句不能更新拆分字段的值</li>
+<li>不支持SAVEPOINT操作</li>
+<li>使用JBDC时，不支持rewriteBatchStatements = true参数设置</li>
+</ol>
+<p>等</p>
+<p>2008年内部 在Cobar的基础上重新研发了分布式数据层框架TDDL（外号头都大了）</p>
+<p><img src="/images/v2-9f56d1d058e3a87a8c6be5b58696f14b_720w.jpg" alt="img"></p>
+<p><img src="/images/v2-c526027f5f2dae54753239d5d9bd277b_720w.jpg" alt="img"></p>
+<p>TDDL提供了以下优点：</p>
+<ol>
+<li>数据库主备和动态切换</li>
+<li>带权重的读写分离</li>
+<li>单线程读重试</li>
+<li>集中式数据源信息管理和动态变更</li>
+<li>支持MySQL和Oracle数据库</li>
+<li>基于JDBC规范，很容易扩展支持实现JDBC规范的数据源</li>
+<li>无Server、client-jar形式存在，应用直连数据库</li>
+<li>读写次数，并发度流程控制，动态变更</li>
+<li>可分析的日志打印，日志流控，动态变更。</li>
+</ol>
+<p>阿里巴巴分库分表的几个原则：</p>
+<ol>
+<li>数据尽可能的平均拆分</li>
+<li>尽可能的减少事务边界 所谓的事务边界 指单个SQL语句在后端数据库上同时执行的数量。因为事务边界越大，系统的锁冲突概率就越高，系统越难以扩展，整体性能越低。</li>
+<li>异构索引表尽量降低全表扫描频率 这个是针对假如数据是按订单id进行分拆，当用户想查看自己的订单时，针对这种场景，常采用异构索引表来解决，即采用异步机制将原表内的每一次创建或更新，都换另一个维度保存一份完整的数据表或索引表。本质上这是互联网公司很多时候采用的一个解决思路：拿空间换时间 。</li>
+</ol>
+<p><img src="/images/v2-60336a35f872a24562326304943292b9_720w.jpg" alt="img"></p>
+<p>实现异构索引的方式，也就是阿里巴巴内部目前采用的方式 ，通过一填名为精卫填海的产品实现了数据的异构复制。</p>
+<ol>
+<li>将多条件频繁查询引入搜索引擎平台 比如Iucene、Solr、ElasticSearch等搜索引擎。</li>
+</ol>
+<p>总结</p>
+<p>从系统的风险的角度考虑，以82法则，在实际中，我们仅针对那些在80%情况下访问的那20%的场景进行如数据异构索引这样的处理，达到这类场景的性能最优化，而以其他80%偶尔出现跨库join、全表扫描的场景，采用最为简单直接的方式往往是最有效的方式。</p>
+<p>2.2美团的解决方案</p>
+<p>通常有两种方案。第一种方案是直接对现有的商品库进行垂直拆分，可以缓解目前写峰值QPS过大、DB主从延迟的问题。第二种方案是对现有的商品库大表进行分库分表，从根本上解决现有问题。方案一实施起来周期较短，但只能解决一时之痛，由此可见，分库分表是必然的。</p>
+<p>在确定分库分表的方案之后，调研了外卖订单、结算以及主站等业务的分库分表实现方案，也调研了业界很多分库分表中间件。在综合考虑性能、稳定性及实现成本的前提下，最终决定自主研发客户端分库分表中间件MTDDL来支撑外卖商品分库分表项目，这也就是MTDDL的由来。</p>
+<p>在MTDDL的设计研发过程中，我们充分考虑了MTDDL的通用性、可扩展性、功能的全面性和接入的便利性。到目前为止一共开发了四期，实现了MySQL动态数据源、读写分离、分布式唯一主键生成器、分库分表、连接池及SQL监控、动态化配置等一系列功能，支持分库分表算法、分布式唯一主键生成算法的高可扩展性，而且支持全注解的方式接入，业务方不需要引入任何配置文件。</p>
+<p><img src="/images/v2-ddda0732607e2bcb365960c675e0dc71_720w.jpg" alt="img"></p>
+<p>分布式唯一主键生成器</p>
+<p>众所周知，分库分表首先要解决的就是分布式唯一主键的问题，业界也有很多相关方案（大众点评用的是时间戳+用户标识码+随机数）：</p>
+<p><img src="/images/v2-c52ddb056dbd39595e7c6f5b2c4fb3b5_720w.jpg" alt="img"></p>
+<p>综上，方案3的缺点可以通过一些手段避免，但其他方案的缺点不好处理，所以选择第3种方案。目前该方案已由美团点评技术工程部实现——分布式ID生成系统Leaf，MTDDL集成了此功能。</p>
+<p>美团分库分表流程</p>
+<p><img src="/images/v2-94c4670cb6b6099055a5146f1a034b9b_720w.jpg" alt="img"></p>
+<p>分库分表取模算法：</p>
+<p>分库分表目前默认使用的是取模算法，分表算法为 (#shard_key % (group_shard_num * table_shard_num))，分库算法为 (#shard_key % (group_shard_num * table_shard_num)) / table_shard_num，其中group_shard_num为分库个数，table_shard_num为每个库的分表个数。</p>
+<p>例如把一张大表分成100张小表然后散到2个库，则0-49落在第一个库、50-99落在第二个库。核心实现如下：</p>
+<p><img src="/images/v2-73c1d9300839c0ee560c9bfcc685d653_720w.jpg" alt="img"></p>
+<p>大众点评订单表早已超过200G，由于查询维度较多，即使加了两个从库，优化索引，仍然存在很多查询不理想的情况。</p>
+<p>先对订单库进行垂直切分，将原有的订单库分为基础订单库、订单流程库等。</p>
+<p><img src="/images/v2-432781b10f8582f5bf192e1a050e99a1_720w.jpg" alt="img"></p>
+<p>垂直切分缓解了原来单集群的压力，但是在抢购时仍然捉襟见肘。原有的订单模型已经无法满足业务需求，于是我们设计了一套新的统一订单模型，为同时满足C端用户、B端商户、客服、运营等的需求，我们分别通过用户ID和商户ID进行切分，并通过PUMA（我们内部开发的MySQL binlog实时解析服务）同步到一个运营库。</p>
+<p><img src="/images/v2-373b769b0466f324fd0553f5074d1b37_720w.jpg" alt="img"></p>
+<p>切分策略</p>
+<ol>
+<li>查询切分</li>
+</ol>
+<p>将ID和库的Mapping关系记录在一个单独的库中。</p>
+<p><img src="/images/v2-eb03c274f799a5147abc23bb99a56b4c_720w.jpg" alt="img"></p>
+<p>优点：ID和库的Mapping算法可以随意更改</p>
+<p>缺点：引入额外的单点</p>
+<ol>
+<li>范围切分</li>
+</ol>
+<p>比如按照时间区间或ID区间来切分</p>
+<p><img src="/images/v2-b8854e3034ce49c2f8d652394c2328ac_720w.jpg" alt="img"></p>
+<p>优点：单表大小可控，天然水平扩展</p>
+<p>缺点：无法解决集中写入瓶颈的问题</p>
+<ol>
+<li>hash切分</li>
+</ol>
+<p>一般采用Mod来切分，下面着重讲一下Mod的策略</p>
+<p><img src="/images/v2-104267f964da011318238d357f05bb6c_720w.jpg" alt="img"></p>
+<p>数据水平切分后我们希望是一劳永逸或者易于水平扩展的，所以推荐mod2^n这种一致性Hash</p>
+<p>以统一订单库为例，我们分库分表的方案是32*32的，即通过UserId后四位mod32到32个库中，同时再将UserId后四位Div 32 Mod 32将每个库分为32个表，共计分为1024个表。线上部署情况为8个集群（主从），每个集群4个库。为什么说这种方式易于水平扩展呢？</p>
+<p>分析两种场景。</p>
+<p>场景一：数据库性能达到瓶颈</p>
+<p>方法一</p>
+<p>按照现有规则不变，可以直接扩展到32个数据库集群。</p>
+<p><img src="/images/v2-65d90f64aa52be10b9bdc1b8042e9e31_720w.jpg" alt="img"></p>
+<p>方法二</p>
+<p>如果32个集群也无法满足需求，那么将分库分表规则调整为（32<em>2^n）</em>(32/2^n)可以达到最多1024个集群。</p>
+<p>场景二：单表容量达瓶颈（或者1024已经无法满足）</p>
+<p>方法：</p>
+<p><img src="/images/v2-c431ecdd67246b4e7745d58155d4e64d_720w.jpg" alt="img"></p>
+<p>假如单表都已突破200G,200<em>1024=200T（按照现有的订单模型算了算，大概1000万亿订单），32</em>（32*2^n），这时分库规则不变，单库里的表再进行裂变，当然目前的订单规则下（userId后四位mod）还是有极限的。因为只有四位，所以最多拆8192个表。</p>
+<p>唯一ID方案</p>
+<p>这个方案也有很多种，主流的有那么几种：</p>
+<ol>
+<li>利用数据库自增ID</li>
+</ol>
+<p>优点：最简单。缺点：单点风险，单机性能瓶颈。</p>
+<p>\2. 利用数据库集群并设置相应的步长（Flickr方案）</p>
+<p>优点：高可用、ID较简洁。 缺点：需要单独的数据库集群。</p>
+<p>\3. Twitter Snowflake</p>
+<p>优点：高性能高可用、易拓展。 缺点：需要独立的集群以及ZK。</p>
+<p>\4. 一大波GUID、Random算法</p>
+<p>优点：简单。 缺点：生成ID较长，有重复几率。</p>
+<p>美团的方案：为了减少运营成本并减少额外的风险，排除了所有需要独立集群的方案，采用带有业务属性的议案： 时间戳+用户标识码+随机数</p>
+<p>有以下几个好处：</p>
+<p>1.方便、成本低。</p>
+<p>2.基本无重复的可能。</p>
+<p>3.自带分库规则，这里的用户标识码即为用户ID的后四位，在查询的场景下，只需要订单号就可以匹配到相应的库表而无需用户ID，只取四位是希望订单号尽可能的短一些，并且评估下来四位已经足够。</p>
+<p>4.可排序，因为时间戳在最前面。</p>
+<p>其他问题</p>
+<p>事务支持：我们是将整个订单领域聚合体切分，维度一致，所以对聚合体的事务是支持的。</p>
+<p>复杂查询：垂直切分后，就跟join说拜拜了；水平切分后，查询的条件一定要在切分的维度内，比如查询具体某个用户下的各位订单等；禁止不带切分的维度的查询，即使中间件可以支持这种查询，可以在内存中组装，但是这种需求往往不应该在在线库查询，或者可以通过其他方法转换到切分的维度来实现。</p>
+<p>数据迁移</p>
+<p>数据库拆分一般是业务发展到一定规模之后的优化和重构，为了支持业务快速上线，很难一开始就分库分表，垂直拆分还好办，改改数据源就搞定了，一旦开始水平拆分，数据清洗是一个大问题。为此，经历了以下几个阶段。</p>
+<p>第一阶段：</p>
+<p><img src="/images/v2-73771a9cec11fc86e5aa0145885b05c8_720w.jpg" alt="img"></p>
+<p>数据库双写（事务成功以老模型为准），查询走老模型</p>
+<p>每日job数据对账（通过DW），并将差异补平</p>
+<p>通过job导历史数据</p>
+<p>第二阶段</p>
+<p><img src="/images/v2-86d44b4b844c130414c4653f215ec149_720w.jpg" alt="img"></p>
+<p>历史数据导入完毕并且数据对账无误</p>
+<p>依然是数据库双写，但是事务成功与否以新模型为准，在线查询切换新模型</p>
+<p>每日job数据对账，将差异补平</p>
+<p>第三阶段</p>
+<p><img src="/images/v2-fe9119746d34b5396e48eac6ecd16746_720w.jpg" alt="img"></p>
+<p>老模型不同同步写入，仅当订单有终态时才会异步补上。</p>
+<p>此阶段只有离线数据依然依赖老的模型，并且下游的依赖非常多，待DW改造完就可以完全废除老模型了。</p>
+<p>总结</p>
+<p>1.并非所有表都需要水平拆分，要看增长的类型和速度，水平拆分是大招，拆分后会增加开发的复杂度，不到万不得已不使用。</p>
+<p>2.在大规模并发的业务上，尽量做到在线查询和离线查询隔离，交易查询和运营/客服查询隔离。</p>
+<p>3.拆分维度的选择很重要，要尽可能在解决拆分前问题的基础上，便于开发。</p>
+<p>4.数据库没你想象的那么坚强，需要保护，尽量使用简单的、良好索引的查询，这样数据库整体可控，也易于长期容量规划以及水平扩展。</p>
+<p><strong>三、分库方案</strong></p>
+<p>3.1垂直切分</p>
+<p>按业务切分，将表按照功能模块、关系密切程度划分出来，部署到不同的库上。例如用户相关、教务相关、cc业务相关、报表相关等。</p>
+<p>3.2水平切分</p>
+<p>当一个表中的数据量过大时，我们可以把该表的数据按照某种规则，例如userID散列，进行划分，然后存储到多个结构相同的表，和不同的库上。例如，我们的userDB中的用户数据表中，每一个表的数据量都很大，就可以把userDB切分为结构相同的多个userDB：part0DB、part1DB等，再将userDB上的用户数据表userTable，切分为很多userTable：userTable0、userTable1等，然后将这些表按照一定的规则存储到多个userDB上。</p>
+<p>3.3切分的选择</p>
+<p>应该使用哪一种方式来实施数据库分库分表，这要看数据库中数据量的瓶颈所在，并综合项目的业务类型进行考虑。</p>
+<p>如果数据库是因为表太多而造成海量数据，并且项目的各项业务逻辑划分清晰、低耦合，那么规则简单明了、容易实施的垂直切分必是首选。而如果数据库中的表并不多，但单表的数据量很大、或数据热度很高，这种情况之下就应该选择水平切分，水平切分比垂直切分要复杂一些，它将原本逻辑上属于一体的数据进行了物理分割，除了在分割时要对分割的粒度做好评估，考虑数据平均和负载平均，后期也将对项目人员及应用程序产生额外的数据管理负担。</p>
+<p>在现实项目中，往往是这两种情况兼而有之，这就需要做出权衡，甚至既需要垂直切分，又需要水平切分。</p>
+<p><strong>四、分表方案</strong></p>
+<p>4.1利用数据库的merge存储引擎来实现分表</p>
+<p>优势：不用改代码。</p>
+<p>缺点：有一些限制，必须是MyISAM存储引擎，分表的id不能是自增的，每个分表的表结构必须相同，Mysql必须具有存储分一数据文件和索引文件的目录的读写权限，必须启用mysql的符号链接支持功能。</p>
+<p>4.2垂直切分</p>
+<p>垂直拆分是根据数据库里面的数据表的相关性进行拆分，比如：一个数据库里面既存在用户数据，又存在订单数据，那么垂直拆分可以把用户数据放入到用户库，把订单数据放到订单库。垂直分表是对数据表进行垂直拆分的一种方式，常见是把一个多字段的大表按常用字段和非常用字段进行拆分，每个表里面的数据记录数一般情况下是相同的，只是字段不一样，使用主键关联。</p>
+<p>比如原始用户表是：</p>
+<p><img src="/images/v2-f9315b646c72eb17564ebc0507458b14_720w.jpg" alt="img"></p>
+<p>垂直拆分后的表是：</p>
+<p><img src="/images/v2-31eb992f13d3222fcfc4cd222158a702_720w.jpg" alt="img"></p>
+<p>垂直拆分的优点是：</p>
+<p>\1. 可以使得数据变小，一个数据块（block）就能存放更多的数据，在查询时就会减少I/O次数（每次查询时读取的Block就少）</p>
+<p>\2. 可以达到最大化利用Cache的目的，具体在垂直拆分的时候可以将不常变的字段放一起，将经常改变的放一起</p>
+<p>\3. 数据维护简单</p>
+<p>缺点是：</p>
+<p>1.主键出现冗余，需要管理冗余例</p>
+<p>2.会引起表连接JOIN操作(增加CPU开销)可以通过在业务服务器上进行join来减少数据库压力</p>
+<p>3.依然存在单表数据量过大的问题(需要水平拆分)</p>
+<p>4.事务处理复杂</p>
+<p>4.3 水平切分</p>
+<p>4.3.1按照订单号做Hash分散订单数据</p>
+<p>把订单号看作是一个字符串，做hash，分散到多个服务器。具体分到哪个库、哪个表存储数据，订单号的数字来记录。以微信红包为例：订单分库分表，是对订单号进行hash计算。然后订单的末尾3个数包含了库名称、表名称。如：可参考美团的方法。</p>
+<p>那么如何查询某用户的所有订单呢？由于根据订单号来分散数据的，他们的订单分散在了多个库、多个表中。</p>
+<p>建异构索引表</p>
+<p>同样如何应付多维度的检索，例如所有订单的分页、订单状态检索、根据促销维度检索等</p>
+<p>做数据冗余、存储多份。或者用ES来处理</p>
+<p>4.3.2按照用户id来切分</p>
+<p>按照用户来切分数据有两种思路：</p>
+<p>一种方案是某个范围的uid订单到哪些库。例如0到2000w uid对应订单数据到a库，2000w到4000w对应订单到b库。</p>
+<p>缺点：某个范围内的用户，下单量比较多，那么造成这个库的压力特别大，数据分布极为不均衡。</p>
+<p>优点：查询指定用户的所有订单，避免了跨库跨表查询。因为用户的id是规定不变的，那么计算出的值永远是固定的某库某表。那么a用户的所有订单都是在某库某表里面。</p>
+<p>第二种方案是使用uid取模运算，第二种方案业界用的比较多。</p>
+<p>具体实现如下：</p>
+<p>按照用户id作为key来切分订单数据，具体如下：</p>
+<p>1、 库名称定位：用户id末尾4位 Mod 32。</p>
+<p>Mod表示除以一个数后，取余下的数。比如除以32后，余下8，余数就是8。</p>
+<p>代码符号是用%表示：15%4=3。</p>
+<p>2、表名称定位：（用户id末尾4位 Dev 32） Mod 32。</p>
+<p>Dev表示除以一个数，取结果的整数。比如得到结果是25.6，取整就是25。</p>
+<p>代码用/来表示：$get_int = floor(15/4)。15除以4，是一个小数3.75，向下取整就是3。一定是向下取整，向上取整就变成了4了。</p>
+<p>按照上面的规则：总共可以表示多少张表呢？32个库*每个库32个表=1024张表。如果想表的数量小，就把32改小一些。</p>
+<p>上面是用计算机术语来表示， 下面用通俗的话描述。</p>
+<p>1、库名称计算</p>
+<p>用户id的后4位数，取32的模(取模就是除以这个数后，余多少)。余下的数，是0-31之间。</p>
+<p>这样可以表示从0-31之间，总共32个数字。用这个32个数字代表着32个库名称：order_db_0、order_db_2…………………….order_db_31</p>
+<p>2、表名称计算</p>
+<p>最后要存储定到哪个表名里面去呢？</p>
+<p>用户id的最后4位数，除以32，取整数。将整数除以32，得到余数，能够表示从0-31之间32个数字，表示表名称。</p>
+<p>表名称类似这样：order_tb_1、order_tb_2……………………..order_tb_31。一个库里面，总共32个表名称。</p>
+<p>比如用户id：19408064，用最后4位数字8064除以32，得到是251.9，取它的整数是251。</p>
+<p>接着将251除以32，取余数，余数为27。</p>
+<p>为了保持性能，每张表的数据量要控制。单表可以维持在一千万-5千万行的数据。1024*一千万。这个已经是很大的数据量了。</p>
+<p>4.3.4按订单的时间来分表</p>
+<p>一个月一张，一年一张表，用户的所有订单，会分散在不同的库、不同的表中。这个可以根据实际的应用场景来使用。适合于经常只查询某一时间段的数据。因为这个种分表方法会有几个缺点，如果查询某个用户所有订单数据，就会出现跨库、跨表，效率会低。</p>
+<p>4.4 阿里云的RDS分库分表方案。DRDS（Distributed Relational Database Service，分布式关系型数据库服务 ）是阿里巴巴自主研发，致力于解决单机数据库瓶颈而推出的分布式数据库中间件产品。DRDS高度兼容Mysql协议和语法，支持水平拆分、平滑扩容、弹性扩展、透明读写分离和分布式事务等特性，具备分布式数据库全生命周期的运维管控能力。</p>
+<p><img src="/images/v2-26e9c6b2d131c19e25d7283f37940ae1_720w.jpg" alt="img"></p>
+<p>DRDS 支持库级拆分、表级拆分和分库分表拆分。拆分键暂时只支持单个字段。<br>分库键：DRDS 根据分库键的值将数据水平拆分到后端的每一个 RDS 分库里。键值相同的数据，一定会位于同一个 RDS 数据库里。<br>分表键：每一张逻辑表都可以定义自己的分表键，键值相同的数据，一定会位于同一个 RDS 数据表里。</p>
+<p><img src="/images/v2-ae88013d0531eac5ebc96fad2e4f8594_720w.jpg" alt="img"></p>
+<p>网上数据：贝聊大概有几万所幼儿园，上亿数据量，效果比较 ：</p>
+<p>1、 性能大幅度提升<br>响应速度提升5至10倍，以当时获取班级动态列表接口为例：<br>分库分表实施前：响应时间大致为200ms至1500ms级之间。<br>分库分表实施后：响应时间提升至大致为30ms至300ms之间。<br>2、 可方便快速进行横向扩容<br>如果需要扩容，直接按照阿里云DRDS指引，增加新的分库即可。<br>3、 架构的优化<br>独立动态业务，通过Dubbo提供服务，对系统进行解耦，让业务具备快速横向扩容能力。<br>4、后遗症<br>独立后，暂时没有做分布式事务，在业务中需要避免跨库事务。</p>
+<ol>
+<li>分库分表存在的问题及解决方案</li>
+<li>事务问题</li>
+</ol>
+<p>在执行分库分表之后，由于数据存储到了不同的库上，数据库事务管理出现了困难。如果依赖数据库本身的分布式事务管理功能去执行事务，将付出高昂的性能代价；如果由应用程序去协助控制，形成程序逻辑上的事务，又会造成编程方面的负担。</p>
+<ol>
+<li>跨库跨表join问题</li>
+</ol>
+<p>在执行了分库分表之后，难以避免会将原本逻辑关联性很强的数据划分到不同的表、不同的库上，这时，表的关联操作将受到限制，我们无法join位于不同分库的表，也无法join分表粒度不同的表，结果原本一次查询能够完成的业务，可能需要多次查询才能完成。</p>
+<p>解决方法：建立异构索引表。以此为例，建立用户id与订单号的索引关系表。</p>
+<p>例如：假设是以订单号分散订单数据。需求是查询某个用户的所有订单。如果知道某个用户的所有订单。那么就可以根据订单号定位到表名称。假设是以用户id分散订单数据的，那么我们只要知道这个订单号是谁的（得到了用户id）,就知道去哪个库、哪个表查询数据了。</p>
+<p>索引表里包括两项：订单号、用户编号。当数据量越来越大时，索引表也不能用单个表存储了，也需要分库分表了，因为关系一一对应，不会变化，所以也可以存在redis里。这样速度就比较快了。</p>
+<p>五、总结</p>
+<p>根据公司的adu来看，包括与美团淘宝的比较而言，可以通过业务来分库，并不是一定要做以id取模来分库，否则要更改的东西比较 大。另外分表的话可以水平和垂直混用，包括适当的场景用ES.而具体实施的时候参美团的三个步骤执行，先老库旧库时间使用，然后监控情况，待新库稳定之后再切到新库。另外以于一些开源的工具可以参考使用。如果按业务进行拆分的话，像报表统计相关的可以分离，教研相关业务独立拆分，用户相关、权限管理可独立拆分成一个模块，小程序相关独立拆分，cc业务独立拆分，订单业务独立拆分、app相关独立拆分、市场推广独立拆分。原则是高聚合，低耦合。具体根据公司的实际应用场景再有所调整。</p>
+<p>文献</p>
+<p>企业IT架构转型之道 阿里巴巴中台战略思想与架构实践 钟华</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" data-id="ckb0hfaq60058i0ja87y6bney" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-sql/btree索引" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" class="article-date">
@@ -104,7 +394,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">sql</a>
+      <a class="article-title" href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">MySQL索引使用的数据结构：B-Tree和B+Tree</a>
     </h1>
   
 
@@ -112,7 +402,7 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="MySQL索引使用的数据结构：B-Tree和B-Tree"><a href="#MySQL索引使用的数据结构：B-Tree和B-Tree" class="headerlink" title="MySQL索引使用的数据结构：B-Tree和B+Tree"></a>MySQL索引使用的数据结构：B-Tree和B+Tree</h1><p>MyISAM是<a href="http://lib.csdn.net/base/mysql" target="_blank" rel="noopener">MySQL</a> 5.5之前版本默认的存储引擎，从5.5之后，InnoDB开始成为MySQL默认的存储引擎。</p>
+        <p>MyISAM是<a href="http://lib.csdn.net/base/mysql" target="_blank" rel="noopener">MySQL</a> 5.5之前版本默认的存储引擎，从5.5之后，InnoDB开始成为MySQL默认的存储引擎。</p>
 <p>MyISAM使用B-Tree实现主键索引、唯一索引和非主键索引。</p>
 <p>InnoDB中非主键索引使用的是B-Tree<a href="http://lib.csdn.net/base/datastructure" target="_blank" rel="noopener">数据结构</a>，而主键索引使用的是B+Tree。</p>
 <p>本文就是对这两种数据结构做简单的介绍。</p>
@@ -120,16 +410,16 @@
 <p>B-Tree不是“B减树”，而是“B树”。</p>
 <p>这里参考了严蔚敏《数据结构》对B-Tree的定义：</p>
 <p>一棵m阶的B-Tree,或者为空树，或者满足下列特性：<br>1.树中每个结点至多有m棵子树；<br>2.若根结点不是叶子结点，则至少有两棵子树；<br>3.除根节点之外的所有非终端结点至少有[m/2]棵子树；<br>4.所有非终端结点中包含下列信息数据:<br>(n,A0,K1,A1,K2,A2……Kn,An)<br>其中，n为关键字的数目，K(i)为关键字，且K(i) &lt; K(i+1), Ai为指向子树根结点的指针，且指针A(i-1)所指子树中所有结点的关键字均小于Ki，Ai所指子树中所有结点的关键字均大于Ki；<br>5.所有叶子结点都出现在同一层次上；</p>
-<p>下面通过一个例子解释一下B-Tree的查找过程。<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231232508924.png" alt="这里写图片描述"><br>这是一棵4阶的B-Tree，深度为4。</p>
+<p>下面通过一个例子解释一下B-Tree的查找过程。<br><img src="/images/20151231232508924.png" alt="b-Tree"><br>这是一棵4阶的B-Tree，深度为4。</p>
 <p>假如在该图中查找关键字47，首先从根结点开始，根据根结点指针t找到*a结点，因为47大于 *a 结点的关键字35，所以会去A1指针指向的 *c结点继续寻找，因为 *c的关键字 43 &lt; 要查找的47 &lt; *c结点的关键字78，所以去 *c结点A1指针指向的 *g结点去寻找，结果在 *g结点中找到了关键字47，查找成功。</p>
 <p><strong>2. B+Tree</strong></p>
 <p>不同的存储引擎可能使用不同的数据结构存储，InnoDB使用的是B+Tree；那什么是B+Tree呢？<br>B+Tree是应文件系统所需而出的一种B-Tree的变型树，一棵m阶的B+树和m阶的B-树的差异在于:<br>1.有n棵子树的结点中含有n个关键字；<br>2.所有的叶子结点中包含了全部关键字的信息，及指向含这些关键字的记录的指针，且叶子结点本身依关键字的大小自小而大顺序链接；<br>3.所有的非终端结点可以看成是索引部分，结点中仅含有其子树(根结点)中的最大（或最小）关键字；</p>
-<p>还是通过一个例子来说明。<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231233806229.png" alt="这里写图片描述"><br>这个例子中，所有非终端结点仅含有子树中最大的关键字。</p>
+<p>还是通过一个例子来说明。<br><img src="/images/20151231233806229.png" alt="B+Tree"><br>这个例子中，所有非终端结点仅含有子树中最大的关键字。</p>
 <p>因为叶子节点本身依据关键字的大小自小而大顺序链接，所以可以从最小关键字起顺序查找。也可以从根结点开始，进行随机查找。</p>
 <p>在B+树中随机差找和在B-树中类似，以上图为例。假设要查找关键字51，现在根节点中比较，发现51&lt;59，因为这里使用的是非终端结点的关键字是子树中最大的关键字，所以进入最大值为59的子结点(15\44\59)中查找，同理，因为44&lt;51&lt;59，所以进入P3指向的结点(51\59)中查找，然后命中关键字51，因为此结点(51\59)是叶子结点，所以查找终止，该结点包含指向数据的指针。</p>
-<p><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160308162237758.png" alt="这里写图片描述"></p>
+<p><img src="/images/20160308162237758.png" alt="B+Tree"></p>
 <p><strong>3.索引如何在B+Tree中组织数据存储</strong></p>
-<p>假设有如下表:<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223150042.png" alt="这里写图片描述"><br>对于表中的每一行数据，索引中包含了last_name、first_name和dob列的值，下图展示索引是如何组织数据存储的:<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223436953.png" alt="这里写图片描述"></p>
+<p>假设有如下表:<br><img src="/images/20160103223150042.png" alt="People_table"><br>对于表中的每一行数据，索引中包含了last_name、first_name和dob列的值，下图展示索引是如何组织数据存储的:<br><img src="/images/20160103223436953.png" alt="索引"></p>
 <p>索引对多个值进行排序的依据是定义索引时列的顺序。<br>(Allen Cuba 1960-01-01)结点左侧的指针指向[?,Allen Cuba 1960-01-01)的叶子页，(Allen Cuba 1960-01-01)和(Astaire,Angelina,1980-03-04)之间的指针指向[Allen Cuba 1960-01-01,Astaire Angelina 1980-03-04)的叶子页，以此类推。总之，每个指针指向的结点中的最小值就是该指针左侧的的值。</p>
 <p>这种存储结构也说明了在定义多个列组成的多列索引中，为什么需要把重复率最低的列放到最左侧，因为这会减少比较的次数，查找起来更加高效。</p>
 <p>4.索引为什么选用B树这种数据结构？<br>因为使用B树查找时，所用的磁盘IO操作次数比平衡二叉树更少，效率也更高。<br>为什么使用B树查找所用的磁盘IO操作次数比平衡二叉树更少？<br>大规模数据存储中，树节点存储的元素数量是有限的（如果元素数量非常多的话，查找就退化成节点内部的线性查找了），这样导致二叉查找树结构由于树的高度过大而造成磁盘I/O读写过于频繁，进而导致查询效率低下。那么我们就需要减少树的高度以提高查找效率。而平衡多路查找树结构B树就满足这样的要求。B树的各种操作能使B树保持较低的高度，从而达到有效减少磁盘IO操作次数。</p>
@@ -138,7 +428,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" data-id="ckb0cwhdc001b5wja9ok9ctpt" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" data-id="ckb0hfaog001fi0jahxnp7awq" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li></ul>
@@ -199,7 +489,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/" data-id="ckb0cwhd4000v5wja5q6gd9ms" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/" data-id="ckb0hfao60010i0jagma5bvr6" class="article-share-link">Share</a>
       
       
     </footer>
@@ -408,7 +698,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/" data-id="ckb0cwhet00575wja06145dr6" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/" data-id="ckb0hfaq50056i0ja5r1j2g2y" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memory/" rel="tag">memory</a></li></ul>
@@ -667,7 +957,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/26/java/java-memory/" data-id="ckb0cwheu00585wjabloqe8cl" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/26/java/java-memory/" data-id="ckb0hfaq30054i0jab0l95zvb" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/memory/" rel="tag">memory</a></li></ul>
@@ -864,7 +1154,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/22/java/java-syc-AQS/" data-id="ckb0cwhf700645wja4onzb77d" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/22/java/java-syc-AQS/" data-id="ckb0hfaql0067i0ja4fcbh33b" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li></ul>
@@ -1114,7 +1404,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/22/java/Java-thread-pool/" data-id="ckb0cwhf600635wjafo8da1r5" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/22/java/Java-thread-pool/" data-id="ckb0hfaqj0066i0ja6b093gjk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li></ul>
@@ -1346,7 +1636,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/20/java/IO-NIO/" data-id="ckb0cwhek004u5wja4akle708" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/20/java/IO-NIO/" data-id="ckb0hfapq004qi0jad8jh5is9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nio/" rel="tag">nio</a></li></ul>
@@ -1408,7 +1698,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/20/java/IO-NIO-reader-line/" data-id="ckb0cwhea004g5wjafjd8a9hy" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/20/java/IO-NIO-reader-line/" data-id="ckb0hfapj004ci0ja304x4hl1" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nio/" rel="tag">nio</a></li></ul>
@@ -1676,480 +1966,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/05/13/java/thread-forkJoin/" data-id="ckb0cwhfe006l5wja70pz7mzl" class="article-share-link">Share</a>
+      <a data-url="http://blob.itmarte.com/2020/05/13/java/thread-forkJoin/" data-id="ckb0hfaqy006oi0jaawg32tgr" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/thread/" rel="tag">thread</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-java/disruptor" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2020/04/27/java/disruptor/" class="article-date">
-  <time datetime="2020-04-27T07:34:37.000Z" itemprop="datePublished">2020-04-27</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/java/">java</a>►<a class="article-category-link" href="/categories/java/collection/">collection</a>►<a class="article-category-link" href="/categories/java/collection/queue/">queue</a>►<a class="article-category-link" href="/categories/java/collection/queue/disruptor/">disruptor</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/04/27/java/disruptor/">disruptor</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>Disruptor是英国外汇交易公司LMAX开发的一个高性能队列，研发的初衷是解决内存队列的延迟问题（在性能测试中发现竟然与I/O操作处于同样的数量级）。基于Disruptor开发的系统单线程能支撑每秒600万订单，2010年在QCon演讲后，获得了业界关注。2011年，企业应用软件专家Martin Fowler专门撰写长文介绍。同年它还获得了Oracle官方的Duke大奖。</p>
-<p>目前，包括Apache Storm、Camel、Log4j 2在内的很多知名项目都应用了Disruptor以获取高性能。在美团技术团队它也有不少应用，有的项目架构借鉴了它的设计机制。本文从实战角度剖析了Disruptor的实现原理。</p>
-<p>需要特别指出的是，这里所说的队列是系统内部的内存队列，而不是Kafka这样的分布式队列。另外，本文所描述的Disruptor特性限于3.3.4。</p>
-<h2 id="Java内置队列"><a href="#Java内置队列" class="headerlink" title="Java内置队列"></a>Java内置队列</h2><p>介绍Disruptor之前，我们先来看一看常用的线程安全的内置队列有什么问题。Java的内置队列如下表所示。</p>
-<table>
-<thead>
-<tr>
-<th>队列</th>
-<th>有界性</th>
-<th>锁</th>
-<th>数据结构</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>ArrayBlockingQueue</td>
-<td>bounded</td>
-<td>加锁</td>
-<td>arraylist</td>
-</tr>
-<tr>
-<td>LinkedBlockingQueue</td>
-<td>optionally-bounded</td>
-<td>加锁</td>
-<td>linkedlist</td>
-</tr>
-<tr>
-<td>ConcurrentLinkedQueue</td>
-<td>unbounded</td>
-<td>无锁</td>
-<td>linkedlist</td>
-</tr>
-<tr>
-<td>LinkedTransferQueue</td>
-<td>unbounded</td>
-<td>无锁</td>
-<td>linkedlist</td>
-</tr>
-<tr>
-<td>PriorityBlockingQueue</td>
-<td>unbounded</td>
-<td>加锁</td>
-<td>heap</td>
-</tr>
-<tr>
-<td>DelayQueue</td>
-<td>unbounded</td>
-<td>加锁</td>
-<td>heap</td>
-</tr>
-</tbody></table>
-<p>队列的底层一般分成三种：数组、链表和堆。其中，堆一般情况下是为了实现带有优先级特性的队列，暂且不考虑。</p>
-<p>我们就从数组和链表两种数据结构来看，基于数组线程安全的队列，比较典型的是ArrayBlockingQueue，它主要通过加锁的方式来保证线程安全；基于链表的线程安全队列分成LinkedBlockingQueue和ConcurrentLinkedQueue两大类，前者也通过锁的方式来实现线程安全，而后者以及上面表格中的LinkedTransferQueue都是通过原子变量compare and swap（以下简称“CAS”）这种不加锁的方式来实现的。</p>
-<p>通过不加锁的方式实现的队列都是无界的（无法保证队列的长度在确定的范围内）；而加锁的方式，可以实现有界队列。在稳定性要求特别高的系统中，为了防止生产者速度过快，导致内存溢出，只能选择有界队列；同时，为了减少Java的垃圾回收对系统性能的影响，会尽量选择array/heap格式的数据结构。这样筛选下来，符合条件的队列就只有ArrayBlockingQueue。</p>
-<h2 id="ArrayBlockingQueue的问题"><a href="#ArrayBlockingQueue的问题" class="headerlink" title="ArrayBlockingQueue的问题"></a>ArrayBlockingQueue的问题</h2><p>ArrayBlockingQueue在实际使用过程中，会因为加锁和伪共享等出现严重的性能问题，我们下面来分析一下。</p>
-<h3 id="加锁"><a href="#加锁" class="headerlink" title="加锁"></a>加锁</h3><p>现实编程过程中，加锁通常会严重地影响性能。线程会因为竞争不到锁而被挂起，等锁被释放的时候，线程又会被恢复，这个过程中存在着很大的开销，并且通常会有较长时间的中断，因为当一个线程正在等待锁时，它不能做任何其他事情。如果一个线程在持有锁的情况下被延迟执行，例如发生了缺页错误、调度延迟或者其它类似情况，那么所有需要这个锁的线程都无法执行下去。如果被阻塞线程的优先级较高，而持有锁的线程优先级较低，就会发生优先级反转。</p>
-<p>Disruptor论文中讲述了一个实验：</p>
-<ul>
-<li>这个测试程序调用了一个函数，该函数会对一个64位的计数器循环自增5亿次。</li>
-<li>机器环境：2.4G 6核</li>
-<li>运算： 64位的计数器累加5亿次</li>
-</ul>
-<p>|Method | Time (ms) | |— | —| |Single thread | 300| |Single thread with CAS | 5,700| |Single thread with lock | 10,000| |Single thread with volatile write | 4,700| |Two threads with CAS | 30,000| |Two threads with lock | 224,000|</p>
-<p>CAS操作比单线程无锁慢了1个数量级；有锁且多线程并发的情况下，速度比单线程无锁慢3个数量级。可见无锁速度最快。</p>
-<p>单线程情况下，不加锁的性能 &gt; CAS操作的性能 &gt; 加锁的性能。</p>
-<p>在多线程情况下，为了保证线程安全，必须使用CAS或锁，这种情况下，CAS的性能超过锁的性能，前者大约是后者的8倍。</p>
-<p>综上可知，加锁的性能是最差的。</p>
-<p><strong>关于锁和CAS</strong></p>
-<p>保证线程安全一般分成两种方式：锁和原子变量。</p>
-<p><strong>锁</strong></p>
-<p><img src="https://p1.meituan.net/travelcube/9b6a41f7d8527df9730b7832b38ec4d5180025.png" alt="图1 通过加锁的方式实现线程安全"></p>
-<p>图1 通过加锁的方式实现线程安全</p>
-<p>采取加锁的方式，默认线程会冲突，访问数据时，先加上锁再访问，访问之后再解锁。通过锁界定一个临界区，同时只有一个线程进入。如上图所示，Thread2访问Entry的时候，加了锁，Thread1就不能再执行访问Entry的代码，从而保证线程安全。</p>
-<p>下面是ArrayBlockingQueue通过加锁的方式实现的offer方法，保证线程安全。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public boolean offer(E e) &#123;</span><br><span class="line">    checkNotNull(e);</span><br><span class="line">    final ReentrantLock lock &#x3D; this.lock;</span><br><span class="line">    lock.lock();</span><br><span class="line">    try &#123;</span><br><span class="line">        if (count &#x3D;&#x3D; items.length)</span><br><span class="line">            return false;</span><br><span class="line">        else &#123;</span><br><span class="line">            insert(e);</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>原子变量</strong></p>
-<p>原子变量能够保证原子性的操作，意思是某个任务在执行过程中，要么全部成功，要么全部失败回滚，恢复到执行之前的初态，不存在初态和成功之间的中间状态。例如CAS操作，要么比较并交换成功，要么比较并交换失败。由CPU保证原子性。</p>
-<p>通过原子变量可以实现线程安全。执行某个任务的时候，先假定不会有冲突，若不发生冲突，则直接执行成功；当发生冲突的时候，则执行失败，回滚再重新操作，直到不发生冲突。</p>
-<p><img src="https://p0.meituan.net/travelcube/de0ced42337014947e7466db4d8f2d4d158395.png" alt="图2 通过原子变量CAS实现线程安全"></p>
-<p>图2 通过原子变量CAS实现线程安全</p>
-<p>如图所示，Thread1和Thread2都要把Entry加1。若不加锁，也不使用CAS，有可能Thread1取到了myValue=1，Thread2也取到了myValue=1，然后相加，Entry中的value值为2。这与预期不相符，我们预期的是Entry的值经过两次相加后等于3。</p>
-<p>CAS会先把Entry现在的value跟线程当初读出的值相比较，若相同，则赋值；若不相同，则赋值执行失败。一般会通过while/for循环来重新执行，直到赋值成功。</p>
-<p>代码示例是AtomicInteger的getAndAdd方法。CAS是CPU的一个指令，由CPU保证原子性。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line"> * Atomically adds the given value to the current value.</span><br><span class="line"> *</span><br><span class="line"> * @param delta the value to add</span><br><span class="line"> * @return the previous value</span><br><span class="line"> *&#x2F;</span><br><span class="line">public final int getAndAdd(int delta) &#123;</span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        int current &#x3D; get();</span><br><span class="line">        int next &#x3D; current + delta;</span><br><span class="line">        if (compareAndSet(current, next))</span><br><span class="line">            return current;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line">&#x2F;**</span><br><span class="line"> * Atomically sets the value to the given updated value</span><br><span class="line"> * if the current value &#123;@code &#x3D;&#x3D;&#125; the expected value.</span><br><span class="line"> *</span><br><span class="line"> * @param expect the expected value</span><br><span class="line"> * @param update the new value</span><br><span class="line"> * @return true if successful. False return indicates that</span><br><span class="line"> * the actual value was not equal to the expected value.</span><br><span class="line"> *&#x2F;</span><br><span class="line">public final boolean compareAndSet(int expect, int update) &#123;</span><br><span class="line">    return unsafe.compareAndSwapInt(this, valueOffset, expect, update);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>在高度竞争的情况下，锁的性能将超过原子变量的性能，但是更真实的竞争情况下，原子变量的性能将超过锁的性能。同时原子变量不会有死锁等活跃性问题。</p>
-<h3 id="伪共享"><a href="#伪共享" class="headerlink" title="伪共享"></a>伪共享</h3><p><strong>什么是共享</strong></p>
-<p>下图是计算的基本结构。L1、L2、L3分别表示一级缓存、二级缓存、三级缓存，越靠近CPU的缓存，速度越快，容量也越小。所以L1缓存很小但很快，并且紧靠着在使用它的CPU内核；L2大一些，也慢一些，并且仍然只能被一个单独的CPU核使用；L3更大、更慢，并且被单个插槽上的所有CPU核共享；最后是主存，由全部插槽上的所有CPU核共享。</p>
-<p><img src="https://p1.meituan.net/travelcube/69ce8ffbe7a4ebee01c377dac174842d433755.png" alt="图3 计算机CPU与缓存示意图"></p>
-<p>图3 计算机CPU与缓存示意图</p>
-<p>当CPU执行运算的时候，它先去L1查找所需的数据、再去L2、然后是L3，如果最后这些缓存中都没有，所需的数据就要去主内存拿。走得越远，运算耗费的时间就越长。所以如果你在做一些很频繁的事，你要尽量确保数据在L1缓存中。</p>
-<p>另外，线程之间共享一份数据的时候，需要一个线程把数据写回主存，而另一个线程访问主存中相应的数据。</p>
-<p>下面是从CPU访问不同层级数据的时间概念:</p>
-<table>
-<thead>
-<tr>
-<th>从CPU到</th>
-<th>大约需要的CPU周期</th>
-<th>大约需要的时间</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>主存</td>
-<td>-</td>
-<td>约60-80ns</td>
-</tr>
-<tr>
-<td>QPI 总线传输(between sockets, not drawn)</td>
-<td>-</td>
-<td>约20ns</td>
-</tr>
-<tr>
-<td>L3 cache</td>
-<td>约40-45 cycles</td>
-<td>约15ns</td>
-</tr>
-<tr>
-<td>L2 cache</td>
-<td>约10 cycles</td>
-<td>约3ns</td>
-</tr>
-<tr>
-<td>L1 cache</td>
-<td>约3-4 cycles</td>
-<td>约1ns</td>
-</tr>
-<tr>
-<td>寄存器</td>
-<td>1 cycle</td>
-<td>-</td>
-</tr>
-</tbody></table>
-<p>可见CPU读取主存中的数据会比从L1中读取慢了近2个数量级。</p>
-<p><strong>缓存行</strong></p>
-<p>Cache是由很多个cache line组成的。每个cache line通常是64字节，并且它有效地引用主内存中的一块儿地址。一个Java的long类型变量是8字节，因此在一个缓存行中可以存8个long类型的变量。</p>
-<p>CPU每次从主存中拉取数据时，会把相邻的数据也存入同一个cache line。</p>
-<p>在访问一个long数组的时候，如果数组中的一个值被加载到缓存中，它会自动加载另外7个。因此你能非常快的遍历这个数组。事实上，你可以非常快速的遍历在连续内存块中分配的任意数据结构。</p>
-<p>下面的例子是测试利用cache line的特性和不利用cache line的特性的效果对比。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">package com.meituan.FalseSharing;</span><br><span class="line"> </span><br><span class="line">&#x2F;**</span><br><span class="line"> * @author gongming</span><br><span class="line"> * @description</span><br><span class="line"> * @date 16&#x2F;6&#x2F;4</span><br><span class="line"> *&#x2F;</span><br><span class="line">public class CacheLineEffect &#123;</span><br><span class="line">    &#x2F;&#x2F;考虑一般缓存行大小是64字节，一个 long 类型占8字节</span><br><span class="line">    static  long[][] arr;</span><br><span class="line"> </span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        arr &#x3D; new long[1024 * 1024][];</span><br><span class="line">        for (int i &#x3D; 0; i &lt; 1024 * 1024; i++) &#123;</span><br><span class="line">            arr[i] &#x3D; new long[8];</span><br><span class="line">            for (int j &#x3D; 0; j &lt; 8; j++) &#123;</span><br><span class="line">                arr[i][j] &#x3D; 0L;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        long sum &#x3D; 0L;</span><br><span class="line">        long marked &#x3D; System.currentTimeMillis();</span><br><span class="line">        for (int i &#x3D; 0; i &lt; 1024 * 1024; i+&#x3D;1) &#123;</span><br><span class="line">            for(int j &#x3D;0; j&lt; 8;j++)&#123;</span><br><span class="line">                sum &#x3D; arr[i][j];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(&quot;Loop times:&quot; + (System.currentTimeMillis() - marked) + &quot;ms&quot;);</span><br><span class="line"> </span><br><span class="line">        marked &#x3D; System.currentTimeMillis();</span><br><span class="line">        for (int i &#x3D; 0; i &lt; 8; i+&#x3D;1) &#123;</span><br><span class="line">            for(int j &#x3D;0; j&lt; 1024 * 1024;j++)&#123;</span><br><span class="line">                sum &#x3D; arr[j][i];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(&quot;Loop times:&quot; + (System.currentTimeMillis() - marked) + &quot;ms&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>在2G Hz、2核、8G内存的运行环境中测试，速度差一倍。</p>
-<p>结果：</p>
-<p>Loop times:30ms Loop times:65ms</p>
-<p><strong>什么是伪共享</strong></p>
-<p>ArrayBlockingQueue有三个成员变量： - takeIndex：需要被取走的元素下标 - putIndex：可被元素插入的位置的下标 - count：队列中元素的数量</p>
-<p>这三个变量很容易放到一个缓存行中，但是之间修改没有太多的关联。所以每次修改，都会使之前缓存的数据失效，从而不能完全达到共享的效果。</p>
-<p><img src="https://p0.meituan.net/travelcube/192e9b87b7a5b68cac352fdeb81dc93b161543.png" alt="图4 ArrayBlockingQueue伪共享示意图"></p>
-<p>图4 ArrayBlockingQueue伪共享示意图</p>
-<p>如上图所示，当生产者线程put一个元素到ArrayBlockingQueue时，putIndex会修改，从而导致消费者线程的缓存中的缓存行无效，需要从主存中重新读取。</p>
-<p>这种无法充分使用缓存行特性的现象，称为伪共享。</p>
-<p>对于伪共享，一般的解决方案是，增大数组元素的间隔使得由不同线程存取的元素位于不同的缓存行上，以空间换时间。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line">package com.meituan.FalseSharing;</span><br><span class="line"> </span><br><span class="line">public class FalseSharing implements Runnable&#123;</span><br><span class="line">        public final static long ITERATIONS &#x3D; 500L * 1000L * 100L;</span><br><span class="line">        private int arrayIndex &#x3D; 0;</span><br><span class="line"> </span><br><span class="line">        private static ValuePadding[] longs;</span><br><span class="line">        public FalseSharing(final int arrayIndex) &#123;</span><br><span class="line">            this.arrayIndex &#x3D; arrayIndex;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        public static void main(final String[] args) throws Exception &#123;</span><br><span class="line">            for(int i&#x3D;1;i&lt;10;i++)&#123;</span><br><span class="line">                System.gc();</span><br><span class="line">                final long start &#x3D; System.currentTimeMillis();</span><br><span class="line">                runTest(i);</span><br><span class="line">                System.out.println(&quot;Thread num &quot;+i+&quot; duration &#x3D; &quot; + (System.currentTimeMillis() - start));</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        private static void runTest(int NUM_THREADS) throws InterruptedException &#123;</span><br><span class="line">            Thread[] threads &#x3D; new Thread[NUM_THREADS];</span><br><span class="line">            longs &#x3D; new ValuePadding[NUM_THREADS];</span><br><span class="line">            for (int i &#x3D; 0; i &lt; longs.length; i++) &#123;</span><br><span class="line">                longs[i] &#x3D; new ValuePadding();</span><br><span class="line">            &#125;</span><br><span class="line">            for (int i &#x3D; 0; i &lt; threads.length; i++) &#123;</span><br><span class="line">                threads[i] &#x3D; new Thread(new FalseSharing(i));</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            for (Thread t : threads) &#123;</span><br><span class="line">                t.start();</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            for (Thread t : threads) &#123;</span><br><span class="line">                t.join();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        public void run() &#123;</span><br><span class="line">            long i &#x3D; ITERATIONS + 1;</span><br><span class="line">            while (0 !&#x3D; --i) &#123;</span><br><span class="line">                longs[arrayIndex].value &#x3D; 0L;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        public final static class ValuePadding &#123;</span><br><span class="line">            protected long p1, p2, p3, p4, p5, p6, p7;</span><br><span class="line">            protected volatile long value &#x3D; 0L;</span><br><span class="line">            protected long p9, p10, p11, p12, p13, p14;</span><br><span class="line">            protected long p15;</span><br><span class="line">        &#125;</span><br><span class="line">        public final static class ValueNoPadding &#123;</span><br><span class="line">            &#x2F;&#x2F; protected long p1, p2, p3, p4, p5, p6, p7;</span><br><span class="line">            protected volatile long value &#x3D; 0L;</span><br><span class="line">            &#x2F;&#x2F; protected long p9, p10, p11, p12, p13, p14, p15;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>在2G Hz，2核，8G内存, jdk 1.7.0_45 的运行环境下，使用了共享机制比没有使用共享机制，速度快了4倍左右。</p>
-<p>结果：</p>
-<ul>
-<li>Thread num 1 duration = 447</li>
-<li>Thread num 2 duration = 463</li>
-<li>Thread num 3 duration = 454</li>
-<li>Thread num 4 duration = 464</li>
-<li>Thread num 5 duration = 561</li>
-<li>Thread num 6 duration = 606</li>
-<li>Thread num 7 duration = 684</li>
-<li>Thread num 8 duration = 870</li>
-<li>Thread num 9 duration = 823</li>
-</ul>
-<p>把代码中ValuePadding都替换为ValueNoPadding后的结果：</p>
-<ul>
-<li>Thread num 1 duration = 446</li>
-<li>Thread num 2 duration = 2549</li>
-<li>Thread num 3 duration = 2898</li>
-<li>Thread num 4 duration = 3931</li>
-<li>Thread num 5 duration = 4716</li>
-<li>Thread num 6 duration = 5424</li>
-<li>Thread num 7 duration = 4868</li>
-<li>Thread num 8 duration = 4595</li>
-<li>Thread num 9 duration = 4540</li>
-</ul>
-<p>备注：在jdk1.8中，有专门的注解@Contended来避免伪共享，更优雅地解决问题。</p>
-<h2 id="Disruptor的设计方案"><a href="#Disruptor的设计方案" class="headerlink" title="Disruptor的设计方案"></a>Disruptor的设计方案</h2><p>Disruptor通过以下设计来解决队列速度慢的问题：</p>
-<ul>
-<li>环形数组结构</li>
-</ul>
-<p>为了避免垃圾回收，采用数组而非链表。同时，数组对处理器的缓存机制更加友好。</p>
-<ul>
-<li>元素位置定位</li>
-</ul>
-<p>数组长度2^n，通过位运算，加快定位的速度。下标采取递增的形式。不用担心index溢出的问题。index是long类型，即使100万QPS的处理速度，也需要30万年才能用完。</p>
-<ul>
-<li>无锁设计</li>
-</ul>
-<p>每个生产者或者消费者线程，会先申请可以操作的元素在数组中的位置，申请到之后，直接在该位置写入或者读取数据。</p>
-<p>下面忽略数组的环形结构，介绍一下如何实现无锁设计。整个过程通过原子变量CAS，保证操作的线程安全。</p>
-<h3 id="一个生产者"><a href="#一个生产者" class="headerlink" title="一个生产者"></a>一个生产者</h3><p><strong>写数据</strong></p>
-<p>生产者单线程写数据的流程比较简单：</p>
-<ol>
-<li>申请写入m个元素；</li>
-<li>若是有m个元素可以入，则返回最大的序列号。这儿主要判断是否会覆盖未读的元素；</li>
-<li>若是返回的正确，则生产者开始写入元素。</li>
-</ol>
-<p><img src="https://p1.meituan.net/travelcube/e71c1449273361ec413fffc7b0bf5507208689.png" alt="图5 单个生产者生产过程示意图"></p>
-<p>图5 单个生产者生产过程示意图</p>
-<h2 id="多个生产者"><a href="#多个生产者" class="headerlink" title="多个生产者"></a>多个生产者</h2><p>多个生产者的情况下，会遇到“如何防止多个线程重复写同一个元素”的问题。Disruptor的解决方法是，每个线程获取不同的一段数组空间进行操作。这个通过CAS很容易达到。只需要在分配元素的时候，通过CAS判断一下这段空间是否已经分配出去即可。</p>
-<p>但是会遇到一个新问题：如何防止读取的时候，读到还未写的元素。Disruptor在多个生产者的情况下，引入了一个与Ring Buffer大小相同的buffer：available Buffer。当某个位置写入成功的时候，便把availble Buffer相应的位置置位，标记为写入成功。读取的时候，会遍历available Buffer，来判断元素是否已经就绪。</p>
-<p>下面分读数据和写数据两种情况介绍。</p>
-<h3 id="读数据"><a href="#读数据" class="headerlink" title="读数据"></a>读数据</h3><p>生产者多线程写入的情况会复杂很多：</p>
-<ol>
-<li>申请读取到序号n；</li>
-<li>若writer cursor &gt;= n，这时仍然无法确定连续可读的最大下标。从reader cursor开始读取available Buffer，一直查到第一个不可用的元素，然后返回最大连续可读元素的位置；</li>
-<li>消费者读取元素。</li>
-</ol>
-<p>如下图所示，读线程读到下标为2的元素，三个线程Writer1/Writer2/Writer3正在向RingBuffer相应位置写数据，写线程被分配到的最大元素下标是11。</p>
-<p>读线程申请读取到下标从3到11的元素，判断writer cursor&gt;=11。然后开始读取availableBuffer，从3开始，往后读取，发现下标为7的元素没有生产成功，于是WaitFor(11)返回6。</p>
-<p>然后，消费者读取下标从3到6共计4个元素。</p>
-<p><img src="https://p0.meituan.net/travelcube/99c603494ea90c9535e165579daf340a161527.png" alt="图6 多个生产者情况下，消费者消费过程示意图"></p>
-<p>图6 多个生产者情况下，消费者消费过程示意图</p>
-<h3 id="写数据"><a href="#写数据" class="headerlink" title="写数据"></a>写数据</h3><p>多个生产者写入的时候：</p>
-<ol>
-<li>申请写入m个元素；</li>
-<li>若是有m个元素可以写入，则返回最大的序列号。每个生产者会被分配一段独享的空间；</li>
-<li>生产者写入元素，写入元素的同时设置available Buffer里面相应的位置，以标记自己哪些位置是已经写入成功的。</li>
-</ol>
-<p>如下图所示，Writer1和Writer2两个线程写入数组，都申请可写的数组空间。Writer1被分配了下标3到下表5的空间，Writer2被分配了下标6到下标9的空间。</p>
-<p>Writer1写入下标3位置的元素，同时把available Buffer相应位置置位，标记已经写入成功，往后移一位，开始写下标4位置的元素。Writer2同样的方式。最终都写入完成。</p>
-<p><img src="https://p1.meituan.net/travelcube/5e06841b1bba4dcf1d3fac169734ba36133983.png" alt="图7 多个生产者情况下，生产者生产过程示意图"></p>
-<p>图7 多个生产者情况下，生产者生产过程示意图</p>
-<p>防止不同生产者对同一段空间写入的代码，如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">public long tryNext(int n) throws InsufficientCapacityException</span><br><span class="line">&#123;</span><br><span class="line">    if (n &lt; 1)</span><br><span class="line">    &#123;</span><br><span class="line">        throw new IllegalArgumentException(&quot;n must be &gt; 0&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    long current;</span><br><span class="line">    long next;</span><br><span class="line"> </span><br><span class="line">    do</span><br><span class="line">    &#123;</span><br><span class="line">        current &#x3D; cursor.get();</span><br><span class="line">        next &#x3D; current + n;</span><br><span class="line"> </span><br><span class="line">        if (!hasAvailableCapacity(gatingSequences, n, current))</span><br><span class="line">        &#123;</span><br><span class="line">            throw InsufficientCapacityException.INSTANCE;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    while (!cursor.compareAndSet(current, next));</span><br><span class="line"> </span><br><span class="line">    return next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>通过do/while循环的条件cursor.compareAndSet(current, next)，来判断每次申请的空间是否已经被其他生产者占据。假如已经被占据，该函数会返回失败，While循环重新执行，申请写入空间。</p>
-<p>消费者的流程与生产者非常类似，这儿就不多描述了。</p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>Disruptor通过精巧的无锁设计实现了在高并发情形下的高性能。</p>
-<p>在美团内部，很多高并发场景借鉴了Disruptor的设计，减少竞争的强度。其设计思想可以扩展到分布式场景，通过无锁设计，来提升服务性能。</p>
-<p>使用Disruptor比使用ArrayBlockingQueue略微复杂，为方便读者上手，增加代码样例。</p>
-<p>代码实现的功能：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端。详细逻辑请细读代码。</p>
-<p>以下代码基于3.3.4版本的Disruptor包。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">package com.meituan.Disruptor;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * @description disruptor代码样例。每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span><br><span class="line"> *&#x2F;</span><br><span class="line">import com.lmax.disruptor.*;</span><br><span class="line">import com.lmax.disruptor.dsl.Disruptor;</span><br><span class="line">import com.lmax.disruptor.dsl.ProducerType;</span><br><span class="line"></span><br><span class="line">import java.util.concurrent.ThreadFactory;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public class DisruptorMain</span><br><span class="line">&#123;</span><br><span class="line">    public static void main(String[] args) throws Exception</span><br><span class="line">    &#123;</span><br><span class="line">        &#x2F;&#x2F; 队列中的元素</span><br><span class="line">        class Element &#123;</span><br><span class="line"></span><br><span class="line">            private int value;</span><br><span class="line"></span><br><span class="line">            public int get()&#123;</span><br><span class="line">                return value;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            public void set(int value)&#123;</span><br><span class="line">                this.value&#x3D; value;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 生产者的线程工厂</span><br><span class="line">        ThreadFactory threadFactory &#x3D; new ThreadFactory()&#123;</span><br><span class="line">            @Override</span><br><span class="line">            public Thread newThread(Runnable r) &#123;</span><br><span class="line">                return new Thread(r, &quot;simpleThread&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; RingBuffer生产工厂,初始化RingBuffer的时候使用</span><br><span class="line">        EventFactory&lt;Element&gt; factory &#x3D; new EventFactory&lt;Element&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public Element newInstance() &#123;</span><br><span class="line">                return new Element();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 处理Event的handler</span><br><span class="line">        EventHandler&lt;Element&gt; handler &#x3D; new EventHandler&lt;Element&gt;()&#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void onEvent(Element element, long sequence, boolean endOfBatch)</span><br><span class="line">            &#123;</span><br><span class="line">                System.out.println(&quot;Element: &quot; + element.get());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 阻塞策略</span><br><span class="line">        BlockingWaitStrategy strategy &#x3D; new BlockingWaitStrategy();</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 指定RingBuffer的大小</span><br><span class="line">        int bufferSize &#x3D; 16;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 创建disruptor，采用单生产者模式</span><br><span class="line">        Disruptor&lt;Element&gt; disruptor &#x3D; new Disruptor(factory, bufferSize, threadFactory, ProducerType.SINGLE, strategy);</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 设置EventHandler</span><br><span class="line">        disruptor.handleEventsWith(handler);</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 启动disruptor的线程</span><br><span class="line">        disruptor.start();</span><br><span class="line"></span><br><span class="line">        RingBuffer&lt;Element&gt; ringBuffer &#x3D; disruptor.getRingBuffer();</span><br><span class="line"></span><br><span class="line">        for (int l &#x3D; 0; true; l++)</span><br><span class="line">        &#123;</span><br><span class="line">            &#x2F;&#x2F; 获取下一个可用位置的下标</span><br><span class="line">            long sequence &#x3D; ringBuffer.next();  </span><br><span class="line">            try</span><br><span class="line">            &#123;</span><br><span class="line">                &#x2F;&#x2F; 返回可用位置的元素</span><br><span class="line">                Element event &#x3D; ringBuffer.get(sequence); </span><br><span class="line">                &#x2F;&#x2F; 设置该位置元素的值</span><br><span class="line">                event.set(l); </span><br><span class="line">            &#125;</span><br><span class="line">            finally</span><br><span class="line">            &#123;</span><br><span class="line">                ringBuffer.publish(sequence);</span><br><span class="line">            &#125;</span><br><span class="line">            Thread.sleep(10);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="性能"><a href="#性能" class="headerlink" title="性能"></a>性能</h2><p>以下面这些模式测试性能:</p>
-<p><img src="https://p1.meituan.net/travelcube/ada37da4ad62709ab67d7a32147cb19a306409.png" alt="img"></p>
-<p>吞吐量测试数据（每秒的数量）如下。</p>
-<p>环境： - CPU:Intel Core i7 860 @ 2.8 GHz without HT - JVM:Java 1.6.0_25 64-bit - OS:Windows 7</p>
-<table>
-<thead>
-<tr>
-<th>-</th>
-<th>ABQ</th>
-<th>Disruptor</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Unicast: 1P – 1C</td>
-<td>5,339,256</td>
-<td>25,998,336</td>
-</tr>
-<tr>
-<td>Pipeline: 1P – 3C</td>
-<td>2,128,918</td>
-<td>16,806,157</td>
-</tr>
-<tr>
-<td>Sequencer: 3P – 1C</td>
-<td>5,539,531</td>
-<td>13,403,268</td>
-</tr>
-<tr>
-<td>Multicast: 1P – 3C</td>
-<td>1,077,384</td>
-<td>9,377,871</td>
-</tr>
-<tr>
-<td>Diamond: 1P – 3C</td>
-<td>2,113,941</td>
-<td>16,143,613</td>
-</tr>
-</tbody></table>
-<p>环境：</p>
-<ul>
-<li>CPU:Intel Core i7-2720QM</li>
-<li>JVM:Java 1.6.0_25 64-bit</li>
-<li>OS:Ubuntu 11.04</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>-</th>
-<th>ABQ</th>
-<th>Disruptor</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Unicast: 1P – 1C</td>
-<td>4,057,453</td>
-<td>22,381,378</td>
-</tr>
-<tr>
-<td>Pipeline: 1P – 3C</td>
-<td>2,006,903</td>
-<td>15,857,913</td>
-</tr>
-<tr>
-<td>Sequencer: 3P – 1C</td>
-<td>2,056,118</td>
-<td>14,540,519</td>
-</tr>
-<tr>
-<td>Multicast: 1P – 3C</td>
-<td>260,733</td>
-<td>10,860,121</td>
-</tr>
-<tr>
-<td>Diamond: 1P – 3C</td>
-<td>2,082,725</td>
-<td>15,295,197</td>
-</tr>
-</tbody></table>
-<p>依据并发竞争的激烈程度的不同，Disruptor比ArrayBlockingQueue吞吐量快4~7倍。</p>
-<p>按照Pipeline: 1P – 3C的连接模式测试延迟，生产者两次写入之间的延迟为1ms。</p>
-<p>运行环境：</p>
-<ul>
-<li>CPU:2.2GHz Core i7-2720QM</li>
-<li>Java: 1.6.0_25 64-bit</li>
-<li>OS:Ubuntu 11.04.</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>-</th>
-<th>Array Blocking Queue (ns)</th>
-<th>Disruptor (ns)</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>99% observations less than</td>
-<td>2,097,152</td>
-<td>128</td>
-</tr>
-<tr>
-<td>99.99% observations less than</td>
-<td>4,194,304</td>
-<td>8,192</td>
-</tr>
-<tr>
-<td>Max Latency</td>
-<td>5,069,086</td>
-<td>175,567</td>
-</tr>
-<tr>
-<td>Mean Latency</td>
-<td>32,757</td>
-<td>52</td>
-</tr>
-<tr>
-<td>Min Latency</td>
-<td>145</td>
-<td>29</td>
-</tr>
-</tbody></table>
-<p>可见，平均延迟差了3个数量级。</p>
-<h2 id="等待策略"><a href="#等待策略" class="headerlink" title="等待策略"></a>等待策略</h2><h3 id="生产者的等待策略"><a href="#生产者的等待策略" class="headerlink" title="生产者的等待策略"></a>生产者的等待策略</h3><p>暂时只有休眠1ns。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LockSupport.parkNanos(1);</span><br></pre></td></tr></table></figure>
-
-<h3 id="消费者的等待策略"><a href="#消费者的等待策略" class="headerlink" title="消费者的等待策略"></a>消费者的等待策略</h3><table>
-<thead>
-<tr>
-<th>名称</th>
-<th>措施</th>
-<th>适用场景</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>BlockingWaitStrategy</td>
-<td>加锁</td>
-<td>CPU资源紧缺，吞吐量和延迟并不重要的场景</td>
-</tr>
-<tr>
-<td>BusySpinWaitStrategy</td>
-<td>自旋</td>
-<td>通过不断重试，减少切换线程导致的系统调用，而降低延迟。推荐在线程绑定到固定的CPU的场景下使用</td>
-</tr>
-<tr>
-<td>PhasedBackoffWaitStrategy</td>
-<td>自旋 + yield + 自定义策略</td>
-<td>CPU资源紧缺，吞吐量和延迟并不重要的场景</td>
-</tr>
-<tr>
-<td>SleepingWaitStrategy</td>
-<td>自旋 + yield + sleep</td>
-<td>性能和CPU资源之间有很好的折中。延迟不均匀</td>
-</tr>
-<tr>
-<td>TimeoutBlockingWaitStrategy</td>
-<td>加锁，有超时限制</td>
-<td>CPU资源紧缺，吞吐量和延迟并不重要的场景</td>
-</tr>
-<tr>
-<td>YieldingWaitStrategy</td>
-<td>自旋 + yield + 自旋</td>
-<td>性能和CPU资源之间有很好的折中。延迟比较均匀</td>
-</tr>
-</tbody></table>
-<h2 id="Log4j-2应用场景"><a href="#Log4j-2应用场景" class="headerlink" title="Log4j 2应用场景"></a>Log4j 2应用场景</h2><p>Log4j 2相对于Log4j 1最大的优势在于多线程并发场景下性能更优。该特性源自于Log4j 2的异步模式采用了Disruptor来处理。 在Log4j 2的配置文件中可以配置WaitStrategy，默认是Timeout策略。下面是Log4j 2中对WaitStrategy的配置官方文档：</p>
-<table>
-<thead>
-<tr>
-<th>System Property</th>
-<th>Default Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>AsyncLogger.WaitStrategy</td>
-<td>Timeout</td>
-<td>Valid values: Block, Timeout, Sleep, Yield. Block is a strategy that uses a lock and condition variable for the I/O thread waiting for log events. Block can be used when throughput and low-latency are not as important as CPU resource. Recommended for resource constrained/virtualised environments. Timeout is a variation of the Block strategy that will periodically wake up from the lock condition await() call. This ensures that if a notification is missed somehow the consumer thread is not stuck but will recover with a small latency delay (default 10ms). Sleep is a strategy that initially spins, then uses a Thread.yield(), and eventually parks for the minimum number of nanos the OS and JVM will allow while the I/O thread is waiting for log events. Sleep is a good compromise between performance and CPU resource. This strategy has very low impact on the application thread, in exchange for some additional latency for actually getting the message logged. Yield is a strategy that uses a Thread.yield() for waiting for log events after an initially spinning. Yield is a good compromise between performance and CPU resource, but may use more CPU than Sleep in order to get the message logged to disk sooner.</td>
-</tr>
-</tbody></table>
-<h3 id="性能差异"><a href="#性能差异" class="headerlink" title="性能差异"></a>性能差异</h3><p>loggers all async采用的是Disruptor，而Async Appender采用的是ArrayBlockingQueue队列。</p>
-<p>由图可见，单线程情况下，loggers all async与Async Appender吞吐量相差不大，但是在64个线程的时候，loggers all async的吞吐量比Async Appender增加了12倍，是Sync模式的68倍。</p>
-<p><img src="https://awps-assets.meituan.net/mit-x/blog-images-bundle-2016/ad04b8bd.png" alt="图8 Log4j 2各个模式性能比较"></p>
-<p>图8 Log4j 2各个模式性能比较</p>
-<p>美团在公司内部统一推行日志接入规范，要求必须使用Log4j 2，使普通单机QPS的上限不再只停留在几千，极高地提升了服务性能。</p>
-<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ol>
-<li><a href="http://brokendreams.iteye.com/blog/2255720" target="_blank" rel="noopener">http://brokendreams.iteye.com/blog/2255720</a></li>
-<li><a href="http://ifeve.com/dissecting-disruptor-whats-so-special/" target="_blank" rel="noopener">http://ifeve.com/dissecting-disruptor-whats-so-special/</a></li>
-<li><a href="https://github.com/LMAX-Exchange/disruptor/wiki/Performance-Results" target="_blank" rel="noopener">https://github.com/LMAX-Exchange/disruptor/wiki/Performance-Results</a></li>
-<li><a href="https://lmax-exchange.github.io/disruptor/" target="_blank" rel="noopener">https://lmax-exchange.github.io/disruptor/</a></li>
-<li><a href="https://logging.apache.org/log4j/2.x/manual/async.html" target="_blank" rel="noopener">https://logging.apache.org/log4j/2.x/manual/async.html</a></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://blob.itmarte.com/2020/04/27/java/disruptor/" data-id="ckb0cwhew005a5wjafw3hd3k0" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li></ul>
 
     </footer>
   </div>
@@ -2173,7 +1993,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">分类</h3>
     <div class="widget">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
     </div>
   </div>
 
@@ -2183,7 +2003,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">标签</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
     </div>
   </div>
 
@@ -2193,7 +2013,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">标签云</h3>
     <div class="widget tagcloud">
-      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 13.33px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/fork-join/" style="font-size: 13.33px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 13.33px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 13.33px;">memory</a> <a href="/tags/nio/" style="font-size: 13.33px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 16.67px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 13.33px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 13.33px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 10px;">分布式与微服务</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 13.33px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 13.33px;">项目</a>
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 13.33px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/fork-join/" style="font-size: 13.33px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 13.33px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 13.33px;">memory</a> <a href="/tags/nio/" style="font-size: 13.33px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 16.67px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 13.33px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 13.33px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 10px;">分布式与微服务</a> <a href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" style="font-size: 10px;">分库分表方案</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 16.67px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 13.33px;">项目</a>
     </div>
   </div>
 
@@ -2215,7 +2035,11 @@
       <ul>
         
           <li>
-            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">sql</a>
+            <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">\[转\]Mysql分库分表方案</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">MySQL索引使用的数据结构：B-Tree和B+Tree</a>
           </li>
         
           <li>
@@ -2228,10 +2052,6 @@
         
           <li>
             <a href="/2020/05/26/java/java-memory/">Java 内存区域</a>
-          </li>
-        
-          <li>
-            <a href="/2020/05/22/java/java-syc-AQS/">Java线程池实现原理及实践</a>
           </li>
         
       </ul>
