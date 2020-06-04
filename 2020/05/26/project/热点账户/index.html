@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>project/热点账户 | Marte 的it人生</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一、概述本篇着重介绍一下从业务层面的热点账户的经验与实践，修改余额的几种方式见上篇介绍交易系统热点账户问题（一）      二、业务场景分析可将业务场景划分为如下： 高频入：B端收单账户（结算账户），业务中间账户（业务处理时记录在途资金） 高频扣：B端代扣代发账户（B端支付账户），B端手续费账户（用于做收支分离） 三、业务角度热点账户实践及其特点1.异步削峰入账 适用场景： 1.适用B端收单账户与">
+<meta property="og:type" content="article">
+<meta property="og:title" content="project&#x2F;热点账户">
+<meta property="og:url" content="http://blob.itmarte.com/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/index.html">
+<meta property="og:site_name" content="Marte 的it人生">
+<meta property="og:description" content="一、概述本篇着重介绍一下从业务层面的热点账户的经验与实践，修改余额的几种方式见上篇介绍交易系统热点账户问题（一）      二、业务场景分析可将业务场景划分为如下： 高频入：B端收单账户（结算账户），业务中间账户（业务处理时记录在途资金） 高频扣：B端代扣代发账户（B端支付账户），B端手续费账户（用于做收支分离） 三、业务角度热点账户实践及其特点1.异步削峰入账 适用场景： 1.适用B端收单账户与">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-05-26T12:13:16.755Z">
+<meta property="article:modified_time" content="2020-05-26T12:26:05.956Z">
+<meta property="article:author" content="marte">
+<meta property="article:tag" content="学习笔记">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="框架">
+<meta property="article:tag" content="springBoot">
+<meta property="article:tag" content="MQ">
+<meta property="article:tag" content="kafka">
+<meta property="article:tag" content="elastic job">
+<meta property="article:tag" content="undertow">
+<meta property="article:tag" content="OAuth2">
+<meta property="article:tag" content="JVM">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Marte 的it人生</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Marte 的个人博客</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">主页</a>
+        
+          <a class="main-nav-link" href="/archives">归档</a>
+        
+          <a class="main-nav-link" href="/categories%20/%E5%88%86%E7%B1%BB">分类</a>
+        
+          <a class="main-nav-link" href="/tags%20%20%20/%E6%A0%87%E7%AD%BE">标签</a>
+        
+          <a class="main-nav-link" href="/about%20%20%20/%E5%85%B3%E4%BA%8E">关于</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://blob.itmarte.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-project/热点账户" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/" class="article-date">
+  <time datetime="2020-05-26T12:13:16.755Z" itemprop="datePublished">2020-05-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      project/热点账户
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a><strong>一、概述</strong></h3><p>本篇着重介绍一下从业务层面的热点账户的经验与实践，修改余额的几种方式见上篇介绍<a href="https://blog.csdn.net/laoxilaoxi_/article/details/80963905" target="_blank" rel="noopener">交易系统热点账户问题（一）</a>     </p>
+<h3 id="二、业务场景分析"><a href="#二、业务场景分析" class="headerlink" title="二、业务场景分析"></a>二、业务场景分析</h3><p>可将业务场景划分为如下：</p>
+<p>高频入：B端收单账户（结算账户），业务中间账户（业务处理时记录在途资金）</p>
+<p>高频扣：B端代扣代发账户（B端支付账户），B端手续费账户（用于做收支分离）</p>
+<h3 id="三、业务角度热点账户实践及其特点"><a href="#三、业务角度热点账户实践及其特点" class="headerlink" title="三、业务角度热点账户实践及其特点"></a><strong>三、业务角度热点账户实践及其特点</strong></h3><p><strong>1.异步削峰入账</strong></p>
+<p>适用场景：</p>
+<p>1.适用B端收单账户与业务中间账户，一般B端收单账户资金是在清结算场景时会扣除，不会影响正常的业务，且MQ处理一般也会在毫秒级别完成，高并发时延迟也是在秒级，所以异步入账对商户几乎无感知。</p>
+<p><strong>2.异步削峰扣款</strong></p>
+<p>适用场景：</p>
+<p>1.适用B端代付代发账户以及手续费账户，一般B端高频扣款对相应时间都有一定的要求，且存在余额不足这种不可抗拒的失败因素，所以采用优先判断余额（脏读余额），拒绝掉大部分账户余额不足的请求，其次是异步增加超时以及重试次数的判断，确保请求的有效处理时间保持在一定范围里（超时时间及重试次数可由业务传入）。</p>
+<p><strong>3.批量入账（缓冲入账）</strong></p>
+<p>适用场景：</p>
+<p>1.适用B端收单账户与业务中间账户，一般<strong>异步削峰入账</strong>可解决大部分高并发问题，但有一些超级B端商户的交易量超级大，可采用该种方式应对。同样，也不会影响该类商户的清结算。</p>
+<p>其中，批量入账需新增一种修改余额的方式，<strong>一次更新余额，批量插入账户历史</strong></p>
+<p><strong>4.子账户（拆分多账户）</strong></p>
+<p>适用场景：</p>
+<p>1.适用与所有账户的扣款入账。</p>
+<p>但是其中存在一些问题解决起来需要多写点代码:</p>
+<p>​                   ①扣款入账实际操作的是子账户（就是一个单独的账户，只是存了与原本账户之间的关系），主账户不存放余额，余额都是存放在子账户，所以查询余额时，需要做特殊处理（求和子账户）。</p>
+<p>​                   ②因为分散到多个子账户去处理扣款入账，那么账户的发生后余额就会是个问题（如果不需要发生后余额的话那就很赞了），扣入账产生的账户历史都存放的是子账户的发生后余额（或者不存），要是必须要的话，那就异步计算生成。</p>
+<p>​                   ③多子账户扣款时会存在子账户余额不足的问题，但实际所有子账户的余额总和可能是充足的，所以需要在余额不足时做子账户资金归集。且若为代付代发的场景，那么对其进行充值时，需要做充值资金拆分，去加到每个子账户中。                  </p>
+<h3 id="四、其他角度方案"><a href="#四、其他角度方案" class="headerlink" title="四、其他角度方案"></a><strong>四、其他角度方案</strong></h3><p>单热点账户常见问题及解决方案在上文已经说的差不多了，但是实际场景中并非为单个热点账户。例如，账户基数为1000W，其中高并发账户有1W-5W，在正常扣入账时，这些热点账户在数据库上产生的锁等以及占用的数据库连接都是共享资源，会相互影响，以至于性能很难提升。</p>
+<p>分库分表，是个很常见也很好的解决方案，下节单独详说一下。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/" data-id="ckb0cwhd4000v5wja5q6gd9ms" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          sql
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">JVM 垃圾回收</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 13.33px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/fork-join/" style="font-size: 13.33px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 13.33px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 13.33px;">memory</a> <a href="/tags/nio/" style="font-size: 13.33px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 16.67px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 13.33px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 13.33px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 10px;">分布式与微服务</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 13.33px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 13.33px;">项目</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">sql</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/">project/热点账户</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/">JVM 垃圾回收</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/java-memory/">Java 内存区域</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/22/java/java-syc-AQS/">Java线程池实现原理及实践</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 marte<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">主页</a>
+  
+    <a href="/archives" class="mobile-nav-link">归档</a>
+  
+    <a href="/categories%20/%E5%88%86%E7%B1%BB" class="mobile-nav-link">分类</a>
+  
+    <a href="/tags%20%20%20/%E6%A0%87%E7%AD%BE" class="mobile-nav-link">标签</a>
+  
+    <a href="/about%20%20%20/%E5%85%B3%E4%BA%8E" class="mobile-nav-link">关于</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

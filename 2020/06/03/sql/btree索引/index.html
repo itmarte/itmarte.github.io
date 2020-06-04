@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>sql | Marte 的it人生</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="MySQL索引使用的数据结构：B-Tree和B+TreeMyISAM是MySQL 5.5之前版本默认的存储引擎，从5.5之后，InnoDB开始成为MySQL默认的存储引擎。 MyISAM使用B-Tree实现主键索引、唯一索引和非主键索引。 InnoDB中非主键索引使用的是B-Tree数据结构，而主键索引使用的是B+Tree。 本文就是对这两种数据结构做简单的介绍。 1. B-Tree B-Tree">
+<meta property="og:type" content="article">
+<meta property="og:title" content="sql">
+<meta property="og:url" content="http://blob.itmarte.com/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/index.html">
+<meta property="og:site_name" content="Marte 的it人生">
+<meta property="og:description" content="MySQL索引使用的数据结构：B-Tree和B+TreeMyISAM是MySQL 5.5之前版本默认的存储引擎，从5.5之后，InnoDB开始成为MySQL默认的存储引擎。 MyISAM使用B-Tree实现主键索引、唯一索引和非主键索引。 InnoDB中非主键索引使用的是B-Tree数据结构，而主键索引使用的是B+Tree。 本文就是对这两种数据结构做简单的介绍。 1. B-Tree B-Tree">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231232508924.png">
+<meta property="og:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231233806229.png">
+<meta property="og:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160308162237758.png">
+<meta property="og:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223150042.png">
+<meta property="og:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223436953.png">
+<meta property="article:published_time" content="2020-06-03T12:05:46.000Z">
+<meta property="article:modified_time" content="2020-06-04T05:44:29.430Z">
+<meta property="article:author" content="marte">
+<meta property="article:tag" content="数据库">
+<meta property="article:tag" content="b+ tree">
+<meta property="article:tag" content="b tree">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="d:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231232508924.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Marte 的it人生</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Marte 的个人博客</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">主页</a>
+        
+          <a class="main-nav-link" href="/archives">归档</a>
+        
+          <a class="main-nav-link" href="/categories%20/%E5%88%86%E7%B1%BB">分类</a>
+        
+          <a class="main-nav-link" href="/tags%20%20%20/%E6%A0%87%E7%AD%BE">标签</a>
+        
+          <a class="main-nav-link" href="/about%20%20%20/%E5%85%B3%E4%BA%8E">关于</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://blob.itmarte.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-sql/btree索引" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" class="article-date">
+  <time datetime="2020-06-03T12:05:46.000Z" itemprop="datePublished">2020-06-03</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>►<a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      sql
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="MySQL索引使用的数据结构：B-Tree和B-Tree"><a href="#MySQL索引使用的数据结构：B-Tree和B-Tree" class="headerlink" title="MySQL索引使用的数据结构：B-Tree和B+Tree"></a>MySQL索引使用的数据结构：B-Tree和B+Tree</h1><p>MyISAM是<a href="http://lib.csdn.net/base/mysql" target="_blank" rel="noopener">MySQL</a> 5.5之前版本默认的存储引擎，从5.5之后，InnoDB开始成为MySQL默认的存储引擎。</p>
+<p>MyISAM使用B-Tree实现主键索引、唯一索引和非主键索引。</p>
+<p>InnoDB中非主键索引使用的是B-Tree<a href="http://lib.csdn.net/base/datastructure" target="_blank" rel="noopener">数据结构</a>，而主键索引使用的是B+Tree。</p>
+<p>本文就是对这两种数据结构做简单的介绍。</p>
+<p><strong>1. B-Tree</strong></p>
+<p>B-Tree不是“B减树”，而是“B树”。</p>
+<p>这里参考了严蔚敏《数据结构》对B-Tree的定义：</p>
+<p>一棵m阶的B-Tree,或者为空树，或者满足下列特性：<br>1.树中每个结点至多有m棵子树；<br>2.若根结点不是叶子结点，则至少有两棵子树；<br>3.除根节点之外的所有非终端结点至少有[m/2]棵子树；<br>4.所有非终端结点中包含下列信息数据:<br>(n,A0,K1,A1,K2,A2……Kn,An)<br>其中，n为关键字的数目，K(i)为关键字，且K(i) &lt; K(i+1), Ai为指向子树根结点的指针，且指针A(i-1)所指子树中所有结点的关键字均小于Ki，Ai所指子树中所有结点的关键字均大于Ki；<br>5.所有叶子结点都出现在同一层次上；</p>
+<p>下面通过一个例子解释一下B-Tree的查找过程。<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231232508924.png" alt="这里写图片描述"><br>这是一棵4阶的B-Tree，深度为4。</p>
+<p>假如在该图中查找关键字47，首先从根结点开始，根据根结点指针t找到*a结点，因为47大于 *a 结点的关键字35，所以会去A1指针指向的 *c结点继续寻找，因为 *c的关键字 43 &lt; 要查找的47 &lt; *c结点的关键字78，所以去 *c结点A1指针指向的 *g结点去寻找，结果在 *g结点中找到了关键字47，查找成功。</p>
+<p><strong>2. B+Tree</strong></p>
+<p>不同的存储引擎可能使用不同的数据结构存储，InnoDB使用的是B+Tree；那什么是B+Tree呢？<br>B+Tree是应文件系统所需而出的一种B-Tree的变型树，一棵m阶的B+树和m阶的B-树的差异在于:<br>1.有n棵子树的结点中含有n个关键字；<br>2.所有的叶子结点中包含了全部关键字的信息，及指向含这些关键字的记录的指针，且叶子结点本身依关键字的大小自小而大顺序链接；<br>3.所有的非终端结点可以看成是索引部分，结点中仅含有其子树(根结点)中的最大（或最小）关键字；</p>
+<p>还是通过一个例子来说明。<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20151231233806229.png" alt="这里写图片描述"><br>这个例子中，所有非终端结点仅含有子树中最大的关键字。</p>
+<p>因为叶子节点本身依据关键字的大小自小而大顺序链接，所以可以从最小关键字起顺序查找。也可以从根结点开始，进行随机查找。</p>
+<p>在B+树中随机差找和在B-树中类似，以上图为例。假设要查找关键字51，现在根节点中比较，发现51&lt;59，因为这里使用的是非终端结点的关键字是子树中最大的关键字，所以进入最大值为59的子结点(15\44\59)中查找，同理，因为44&lt;51&lt;59，所以进入P3指向的结点(51\59)中查找，然后命中关键字51，因为此结点(51\59)是叶子结点，所以查找终止，该结点包含指向数据的指针。</p>
+<p><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160308162237758.png" alt="这里写图片描述"></p>
+<p><strong>3.索引如何在B+Tree中组织数据存储</strong></p>
+<p>假设有如下表:<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223150042.png" alt="这里写图片描述"><br>对于表中的每一行数据，索引中包含了last_name、first_name和dob列的值，下图展示索引是如何组织数据存储的:<br><img src="D:%5Cjavawork%5Ccb-dream%5Citmarte%5Citmarte.github.io%5Citmarte.github.io%5Csource%5Cimages%5C20160103223436953.png" alt="这里写图片描述"></p>
+<p>索引对多个值进行排序的依据是定义索引时列的顺序。<br>(Allen Cuba 1960-01-01)结点左侧的指针指向[?,Allen Cuba 1960-01-01)的叶子页，(Allen Cuba 1960-01-01)和(Astaire,Angelina,1980-03-04)之间的指针指向[Allen Cuba 1960-01-01,Astaire Angelina 1980-03-04)的叶子页，以此类推。总之，每个指针指向的结点中的最小值就是该指针左侧的的值。</p>
+<p>这种存储结构也说明了在定义多个列组成的多列索引中，为什么需要把重复率最低的列放到最左侧，因为这会减少比较的次数，查找起来更加高效。</p>
+<p>4.索引为什么选用B树这种数据结构？<br>因为使用B树查找时，所用的磁盘IO操作次数比平衡二叉树更少，效率也更高。<br>为什么使用B树查找所用的磁盘IO操作次数比平衡二叉树更少？<br>大规模数据存储中，树节点存储的元素数量是有限的（如果元素数量非常多的话，查找就退化成节点内部的线性查找了），这样导致二叉查找树结构由于树的高度过大而造成磁盘I/O读写过于频繁，进而导致查询效率低下。那么我们就需要减少树的高度以提高查找效率。而平衡多路查找树结构B树就满足这样的要求。B树的各种操作能使B树保持较低的高度，从而达到有效减少磁盘IO操作次数。</p>
+<p>参考资料:<br>《数据结构（<a href="http://lib.csdn.net/base/c" target="_blank" rel="noopener">C语言</a>版）》<br>《Effective MySQL之SQL语句最优化》<br>《高性能MySQL》</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" data-id="ckb0cwhdc001b5wja9ok9ctpt" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">project/热点账户</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 13.33px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/fork-join/" style="font-size: 13.33px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 13.33px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 13.33px;">memory</a> <a href="/tags/nio/" style="font-size: 13.33px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 16.67px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 13.33px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 13.33px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 10px;">分布式与微服务</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 13.33px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 13.33px;">项目</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">sql</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/project/%E7%83%AD%E7%82%B9%E8%B4%A6%E6%88%B7/">project/热点账户</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/JVM%20%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6/">JVM 垃圾回收</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/26/java/java-memory/">Java 内存区域</a>
+          </li>
+        
+          <li>
+            <a href="/2020/05/22/java/java-syc-AQS/">Java线程池实现原理及实践</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 marte<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">主页</a>
+  
+    <a href="/archives" class="mobile-nav-link">归档</a>
+  
+    <a href="/categories%20/%E5%88%86%E7%B1%BB" class="mobile-nav-link">分类</a>
+  
+    <a href="/tags%20%20%20/%E6%A0%87%E7%AD%BE" class="mobile-nav-link">标签</a>
+  
+    <a href="/about%20%20%20/%E5%85%B3%E4%BA%8E" class="mobile-nav-link">关于</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
