@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>dubbo 连接数配置导致连接爆发 | Marte 的it人生</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="0x00. 翻车现场收到运维noc告警：  0x01. 历尽艰辛，深入排查打开电脑，首先确认生产交易一切还正常。查看这段时间日志，发现并没有什么异常情况，日志都是正常输出。没办法只好再次走查此次改动的代码，发现全是业务代码，并没有任何与网络连接有关的代码改动。 netstat -anp|grep 6701|wc -l  查看连接情况  jmap -histo 6701|less 查看堆内存情况">
+<meta property="og:type" content="article">
+<meta property="og:title" content="dubbo 连接数配置导致连接爆发">
+<meta property="og:url" content="http://blob.itmarte.com/2020/06/04/microservices/dubbo%E8%BF%9E%E6%8E%A5%E6%95%B0%E9%85%8D%E7%BD%AE%E5%BC%95%E5%8F%91%E7%9A%84%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Marte 的it人生">
+<meta property="og:description" content="0x00. 翻车现场收到运维noc告警：  0x01. 历尽艰辛，深入排查打开电脑，首先确认生产交易一切还正常。查看这段时间日志，发现并没有什么异常情况，日志都是正常输出。没办法只好再次走查此次改动的代码，发现全是业务代码，并没有任何与网络连接有关的代码改动。 netstat -anp|grep 6701|wc -l  查看连接情况  jmap -histo 6701|less 查看堆内存情况">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenpjnt7j30yq0higpo.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/5911899802886.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/20200604162924.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbr8va8yvhj30hm0ck3z8.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenooa0ej314i0u0tf3.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbpy5n5wfuj31m6078wp5.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbpxzrh8q4j31mc0u0hdt.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenq2xc6j31820cs76u.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenma2pxj31au0u044x.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenjpogfj30ph05zdgv.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbq3md7d15j30m90cb43g.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbq3z7a7mmj31nq074qat.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqennntwoj30sg0fswhn.jpg">
+<meta property="og:image" content="https://tva1.sinaimg.cn/large/0082zybply1gbr8wael1dj31lw07qdgq.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenluvenj30rz0hsjv2.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenlanqrj327f0u04gd.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbq4mytke2j31gw07279o.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqemv4o7qj32780lkgrc.jpg">
+<meta property="og:image" content="http://blob.itmarte.com/images/0082zybply1gbqenms1eqj32dw0l87h5.jpg">
+<meta property="article:published_time" content="2020-06-04T07:31:13.000Z">
+<meta property="article:modified_time" content="2020-06-04T08:38:31.932Z">
+<meta property="article:author" content="marte">
+<meta property="article:tag" content="分布式与微服务">
+<meta property="article:tag" content="dubbo 配置">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://blob.itmarte.com/images/0082zybply1gbqenpjnt7j30yq0higpo.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Marte 的it人生</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Marte 的个人博客</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">主页</a>
+        
+          <a class="main-nav-link" href="/archives">归档</a>
+        
+          <a class="main-nav-link" href="/categories%20/%E5%88%86%E7%B1%BB">分类</a>
+        
+          <a class="main-nav-link" href="/tags%20%20%20/%E6%A0%87%E7%AD%BE">标签</a>
+        
+          <a class="main-nav-link" href="/about%20%20%20/%E5%85%B3%E4%BA%8E">关于</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://blob.itmarte.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-microservices/dubbo连接数配置引发的问题" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/04/microservices/dubbo%E8%BF%9E%E6%8E%A5%E6%95%B0%E9%85%8D%E7%BD%AE%E5%BC%95%E5%8F%91%E7%9A%84%E9%97%AE%E9%A2%98/" class="article-date">
+  <time datetime="2020-06-04T07:31:13.000Z" itemprop="datePublished">2020-06-04</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a>►<a class="article-category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/dubbo%E9%85%8D%E7%BD%AE/">dubbo配置</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      dubbo 连接数配置导致连接爆发
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0x00-翻车现场"><a href="#0x00-翻车现场" class="headerlink" title="0x00. 翻车现场"></a>0x00. 翻车现场</h2><p>收到运维noc告警：</p>
+<p><img src="/images/0082zybply1gbqenpjnt7j30yq0higpo.jpg" alt="img"></p>
+<h2 id="0x01-历尽艰辛，深入排查"><a href="#0x01-历尽艰辛，深入排查" class="headerlink" title="0x01. 历尽艰辛，深入排查"></a>0x01. 历尽艰辛，深入排查</h2><p>打开电脑，首先确认生产交易一切还正常。查看这段时间日志，发现并没有什么异常情况，日志都是正常输出。没办法只好再次走查此次改动的代码，发现全是业务代码，并没有任何与网络连接有关的代码改动。</p>
+<p><code>netstat -anp|grep 6701|wc -l</code>  查看连接情况</p>
+<p><img src="/images/5911899802886.png" alt="img"></p>
+<p><code>jmap -histo 6701|less</code> 查看堆内存情况</p>
+<p><img src="/images/20200604162924.png" alt="020060416292"></p>
+<p>问题真的请奇怪，一时半会想不到解决方案，只好先实施重启大法。重启过后，连接数下降了，到达了正常阈值。但是不一会连接数持续升高，不一会还是升到上万。</p>
+<p>这下重启解决不了办法，只好从应用出发，找找到底什么问题。</p>
+<p>这个应用是一个路由服务，会根据上游系统指定路由编码，将交易分发到下游子系统。架构图如下:</p>
+<p><img src="/images/0082zybply1gbr8va8yvhj30hm0ck3z8.jpg" alt="img"></p>
+<p>之前在这篇文章<a href="https://mp.weixin.qq.com/s/Det95SU1u1dDH7nT_B1XEQ" target="_blank" rel="noopener">路由系统演化史</a>讲过，路由系统使用 <strong>Dubbo API</strong> ，代码如下：</p>
+<p><img src="/images/0082zybply1gbqenooa0ej314i0u0tf3.jpg" alt="img"></p>
+<p>由于我们还有另外一套系统，也部署这个应用，但是该系统生产机器连接数却很少。交叉比对了两套系统应用的系统配置值，只有 <strong>connections</strong> 设置不一样，当前有问题的系统设置为 <strong>1000</strong>，另外一个系统为 <strong>10</strong> 。</p>
+<p>大致找到原因，也将 <strong>connections</strong> 设置为 <strong>10</strong>，重启应用，生产机器连接数恢复正常。</p>
+<h2 id="0x02-抽丝剥茧，还原经过"><a href="#0x02-抽丝剥茧，还原经过" class="headerlink" title="0x02. 抽丝剥茧，还原经过"></a>0x02. 抽丝剥茧，还原经过</h2><p>首先我们来看下 <strong>connections</strong> 这个配置的作用，可以直接查看官方文档<a href="http://dubbo.apache.org/zh-cn/docs/user/references/xml/dubbo-reference.html" target="_blank" rel="noopener">http://dubbo.apache.org/zh-cn/docs/user/references/xml/dubbo-reference.html</a>。</p>
+<p>下面配置来源于：<strong>dubbo:reference</strong></p>
+<p><img src="/images/0082zybply1gbpy5n5wfuj31m6078wp5.jpg" alt="img"></p>
+<p>总共可以在三个地方配置 <strong>connections</strong> 参数，分别为：<strong>dubbo:reference</strong>，<strong>dubbo:consumer</strong>，<strong>dubbo:provider</strong>。</p>
+<blockquote>
+<p><strong>注意</strong>：图中标示地方实际上与源码存在出入。截止 <strong>Dubbo 2.7.3</strong> 版本，图中 ① 处，<strong>dubbo:consumer</strong> 文档上显示为 <strong>100</strong>，实际源码默认配置为 <strong>0</strong>，这点需要注意。另外 ② 处文字描述存在问题，目前 <strong>connections</strong> 参数主要对 <strong>dubbo</strong> 协议有用，<strong>http</strong> 短连接协议还未使用该配置</p>
+</blockquote>
+<p>其中 <strong>reference.connections</strong> 为服务级别的配置，若未配置将会使用 <strong>consumer.connections</strong> 配置值。另外这个参数若在 <strong>provider.connections</strong> 配置，其对服务提供者无效，参数将通过注册中心传递给消费者成为其默认配置。三者实际作用顺序如下：</p>
+<p><img src="/images/0082zybply1gbpxzrh8q4j31mc0u0hdt.jpg" alt="img"></p>
+<p><strong>Debug</strong> 源码，<strong>connections</strong> 最终会在 <strong>DubboProtocol#getClients</strong> 被使用，方法源码如下：</p>
+<p><img src="/images/0082zybply1gbqenq2xc6j31820cs76u.jpg" alt="img"></p>
+<p><img src="/images/0082zybply1gbqenma2pxj31au0u044x.jpg" alt="img"></p>
+<blockquote>
+<p><strong>Dubbo</strong> 协议默认将会使用 <strong>Netty</strong> 与服务提供者建立长连接</p>
+</blockquote>
+<p>首先将会获取 <strong>connections</strong> 配置，规则如上图，若其大于 <strong>0</strong>，建立 <strong>connections</strong> 数量的长连接。</p>
+<p>如果一个提供者对外暴露 <strong>10</strong> 个接口，且其有两个节点。消费者端引入提供者所有服务，配置 <strong>connections=1000</strong>。当消费者启动之后，将会立刻创建 <strong>1000x2x10=20000</strong> 连接。<strong>这就是生产机器连接数飙升的根本原因</strong>。</p>
+<blockquote>
+<p>路由服务使用 <strong>Dubbo API</strong> 编程，服务启动成功之后，只有上游系统调用路由服务时， <strong>Dubbo</strong> 才会与与下游服务提供者建立连接，所以现象看起来服务连接数是慢慢激增。</p>
+</blockquote>
+<p>如果未设置 <strong>connections</strong> 参数，Dubbo 将会创建<strong>共享连接（shareconnections）</strong>。消费者调用的服务若为同一个服务提供者（<strong>IP+PORT</strong> 区分），这些服务接口将会共享这些连接。</p>
+<p><strong>shareconnections</strong> 可以在 <strong>dubbo:consumer</strong> 配置中配置，也可以在启动 <strong>JVM</strong> 参数加入如下配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-Dshareconnections&#x3D;10</span><br></pre></td></tr></table></figure>
+
+<p>如果消费者需要调用同个服务提供者应用的 <strong>10</strong> 个服务接口，服务提供者提供两个节点，<strong>shareconnections=1000</strong>，消费者服务启动之后，仅会创建 <strong>1000*2=2000</strong> 连接。</p>
+<p>这么对比，<strong>shareconnections</strong> 与 <strong>connections</strong> 建立连不是一个量级。</p>
+<h3 id="2-1-使用连接"><a href="#2-1-使用连接" class="headerlink" title="2.1 使用连接"></a>2.1 使用连接</h3><p>消费者调用服务时，将会随机从连接数组中取一个连接使用，代码位于 <code>DubboInvoker#doInvoke</code>。</p>
+<p><img src="/images/0082zybply1gbqenjpogfj30ph05zdgv.jpg" alt="img"></p>
+<h3 id="2-2-如何正确配置连接数"><a href="#2-2-如何正确配置连接数" class="headerlink" title="2.2 如何正确配置连接数"></a>2.2 如何正确配置连接数</h3><p>首先我们来看下单一长连接性能，文档地址:<a href="http://dubbo.apache.org/zh-cn/docs/user/references/protocol/dubbo.html" target="_blank" rel="noopener">http://dubbo.apache.org/zh-cn/docs/user/references/protocol/dubbo.html</a></p>
+<p><img src="/images/0082zybply1gbq3md7d15j30m90cb43g.jpg" alt="img"></p>
+<p>对于只有少数消费者场景，我们可以使用默认配置，即不配置 <strong>connections</strong> 参数 。若调用同一个提供者服务过多，可以考虑适当多配增加 <strong>shareconnections</strong>。最后若某一服务接口调用量特别大，可以考虑为这个服务单独配置 <strong>connections</strong>。</p>
+<h2 id="0x03-举一反三，聊聊其他配置"><a href="#0x03-举一反三，聊聊其他配置" class="headerlink" title="0x03. 举一反三，聊聊其他配置"></a>0x03. 举一反三，聊聊其他配置</h2><p>Dubbo 还有很多配置项，下面着重介绍一些配置参数。</p>
+<h3 id="3-1-dubbo-provider-executes"><a href="#3-1-dubbo-provider-executes" class="headerlink" title="3.1 dubbo.provider.executes"></a>3.1 dubbo.provider.executes</h3><p>该参数用来控制每个方法最大并行数。如果该值设置为 <strong>10</strong> ，每个服务方法若已有 <strong>10</strong> 个请求正在处理，第 <strong>11</strong> 个服务请求将会抛出异常，直到之前服务调用完成，正在请求数量小于 <strong>10</strong> 未知。</p>
+<p><img src="/images/0082zybply1gbq3z7a7mmj31nq074qat.jpg" alt="img"></p>
+<p>一旦设置 <strong>executes&gt;0</strong>,<strong>Dubbo</strong> 将会通过 <strong>SPI</strong> 机制启用 <code>ExecuteLimitFilter</code>，源码还是比较简单。</p>
+<p><img src="/images/0082zybply1gbqennntwoj30sg0fswhn.jpg" alt="img"></p>
+<h3 id="3-2-dubbo-reference-actives"><a href="#3-2-dubbo-reference-actives" class="headerlink" title="3.2 dubbo.reference.actives"></a>3.2 dubbo.reference.actives</h3><p>这个参数将会控制消费者每个服务每个方法最大并发数。可以通过 <strong>dubbo:method.actives</strong> 单独为服务方法设置。如果该值为 <strong>10</strong>，一旦某个服务某个方法并发数超过 <strong>10</strong>，第 <strong>11</strong> 个服务将会等待，若在超时时间内其他请求执行结束，计数值减值小于阈值，第 <strong>11</strong> 个请求将会被执行，否者将会抛错。</p>
+<p><img src="https://tva1.sinaimg.cn/large/0082zybply1gbr8wael1dj31lw07qdgq.jpg" alt="img"></p>
+<blockquote>
+<p><code>dubbo.provider</code> 上也可以配置这个值，其将会与 <strong>connections</strong> 一样，将会传递给消费者。</p>
+</blockquote>
+<p>原理等同上面方法，将会启用 <code>ActiveLimitFilter</code>，源码如下 ：</p>
+<p><img src="/images/0082zybply1gbqenluvenj30rz0hsjv2.jpg" alt="img"></p>
+<p>这里需要注意 <strong>actives</strong> 引起超时与服务端超时区别。</p>
+<p><img src="/images/0082zybply1gbqenlanqrj327f0u04gd.jpg" alt="img"></p>
+<h3 id="3-3-dubbo-protocol-accepts"><a href="#3-3-dubbo-protocol-accepts" class="headerlink" title="3.3 dubbo.protocol.accepts"></a>3.3 dubbo.protocol.accepts</h3><p>服务提供者最大连接数，如果设置 <strong>accepts=10</strong>,一旦服务提供者连接数大于 <strong>10</strong>，其余新增连接将会被拒绝。</p>
+<p><img src="/images/0082zybply1gbq4mytke2j31gw07279o.jpg" alt="img"></p>
+<p>方法源码如下：</p>
+<p><img src="/images/0082zybply1gbqemv4o7qj32780lkgrc.jpg" alt="img"></p>
+<p>服务提供者断开连接，消费端将会打印连接断开日志。另外消费者会定时检查长连接可用性，若不可用，将会重新发起连接。所以在消费者端就会看到连接断开，重连，然后又被服务提供者断开的现象。</p>
+<p><img src="/images/0082zybply1gbqenms1eqj32dw0l87h5.jpg" alt="img"></p>
+<h2 id="0x04-总结"><a href="#0x04-总结" class="headerlink" title="0x04. 总结"></a>0x04. 总结</h2><p>本文通过一次生产连接数过多的现象，详细剖析定位问题的原因。作为一个合格的开发，对于开源框架，我们不仅要会熟练使用，也要了解其底层实现，相关参数设置。一旦参数设置不合理就可能引发生产事故。</p>
+<p>另外对于生产系统，监控系统非常重要。比如上面的问题，如果没有监控发现，小黑哥可能一时半会都不知道有这个问题存在，毕竟平时也不会太关注连接数这个指标。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/06/04/microservices/dubbo%E8%BF%9E%E6%8E%A5%E6%95%B0%E9%85%8D%E7%BD%AE%E5%BC%95%E5%8F%91%E7%9A%84%E9%97%AE%E9%A2%98/" data-id="ckc4mb0nz004n3wjabb1q6xdh" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/dubbo-%E9%85%8D%E7%BD%AE/" rel="tag">dubbo 配置</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          \[转\]Mysql分库分表方案
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">MySQL索引使用的数据结构：B-Tree和B+Tree</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm%E5%B7%A5%E5%85%B7/">jvm工具</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/dubbo%E9%85%8D%E7%BD%AE/">dubbo配置</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySql/">MySql</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySql/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/">MVCC多版本并发控制</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/" rel="tag">MVCC多版本并发控制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySql/" rel="tag">MySql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/dubbo-%E9%85%8D%E7%BD%AE/" rel="tag">dubbo 配置</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jvm%E5%B7%A5%E5%85%B7/" rel="tag">jvm工具</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/" style="font-size: 10px;">MVCC多版本并发控制</a> <a href="/tags/MySql/" style="font-size: 10px;">MySql</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 12.5px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/dubbo-%E9%85%8D%E7%BD%AE/" style="font-size: 10px;">dubbo 配置</a> <a href="/tags/fork-join/" style="font-size: 12.5px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 12.5px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/jvm%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">jvm工具</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/memory/" style="font-size: 12.5px;">memory</a> <a href="/tags/nio/" style="font-size: 12.5px;">nio</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 15px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 12.5px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 12.5px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 12.5px;">分布式与微服务</a> <a href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" style="font-size: 10px;">分库分表方案</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 17.5px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 12.5px;">项目</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/07/02/sql/MySQL-InnoDB-MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/">MySQL-InnoDB-MVCC多版本并发控制</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/java/JDK%20%E7%9B%91%E6%8E%A7%E5%92%8C%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E5%B7%A5%E5%85%B7%E6%80%BB%E7%BB%93/">JDK 监控和故障处理工具总结</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">\[转\]Mysql分库分表方案</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/microservices/dubbo%E8%BF%9E%E6%8E%A5%E6%95%B0%E9%85%8D%E7%BD%AE%E5%BC%95%E5%8F%91%E7%9A%84%E9%97%AE%E9%A2%98/">dubbo 连接数配置导致连接爆发</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/03/sql/btree%E7%B4%A2%E5%BC%95/">MySQL索引使用的数据结构：B-Tree和B+Tree</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 marte<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">主页</a>
+  
+    <a href="/archives" class="mobile-nav-link">归档</a>
+  
+    <a href="/categories%20/%E5%88%86%E7%B1%BB" class="mobile-nav-link">分类</a>
+  
+    <a href="/tags%20%20%20/%E6%A0%87%E7%AD%BE" class="mobile-nav-link">标签</a>
+  
+    <a href="/about%20%20%20/%E5%85%B3%E4%BA%8E" class="mobile-nav-link">关于</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
