@@ -153,7 +153,7 @@ With READ COMMITTED isolation level, the snapshot is reset to the time of each c
 innodb在快照读的情况下并没有真正的避免幻读, 但是在当前读的情况下避免了不可重复读和幻读!!!
 
 ### 小结
-
+![MVCC多版本并发控制](/images/MVCC多版本并发控制.png)
 1. 一般我们认为MVCC有下面几个特点：
 
 - 每行数据都存在一个版本，每次数据更新时都更新该版本
