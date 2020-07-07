@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>认识MySQL | Marte 的it人生</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="什么是MySQL?MySQL 是一种关系型数据库，在Java企业级开发中非常常用，因为 MySQL 是开源免费的，并且方便扩展。阿里巴巴数据库系统也大量用到了 MySQL，因此它的稳定性是有保障的。MySQL是开放源代码的，因此任何人都可以在 GPL(General Public License) 的许可下下载并根据个性化的需要对其进行修改。MySQL的默认端口号是3306。 存储引擎一些常用命令">
+<meta property="og:type" content="article">
+<meta property="og:title" content="认识MySQL">
+<meta property="og:url" content="http://blob.itmarte.com/2020/04/15/sql/%E8%AE%A4%E8%AF%86MYSQL/index.html">
+<meta property="og:site_name" content="Marte 的it人生">
+<meta property="og:description" content="什么是MySQL?MySQL 是一种关系型数据库，在Java企业级开发中非常常用，因为 MySQL 是开源免费的，并且方便扩展。阿里巴巴数据库系统也大量用到了 MySQL，因此它的稳定性是有保障的。MySQL是开放源代码的，因此任何人都可以在 GPL(General Public License) 的许可下下载并根据个性化的需要对其进行修改。MySQL的默认端口号是3306。 存储引擎一些常用命令">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://blob.itmarte.com/images/96e65732e706e67.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/20200702382545352.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/125453725.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/25453525.png">
+<meta property="og:image" content="http://blob.itmarte.com/images/525453525.png">
+<meta property="article:published_time" content="2020-04-15T12:05:46.000Z">
+<meta property="article:modified_time" content="2020-07-06T02:00:26.351Z">
+<meta property="article:author" content="marte">
+<meta property="article:tag" content="数据库">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://blob.itmarte.com/images/96e65732e706e67.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Marte 的it人生" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Marte 的it人生</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">Marte 的个人博客</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">主页</a>
+        
+          <a class="main-nav-link" href="/archives">归档</a>
+        
+          <a class="main-nav-link" href="/categories%20/%E5%88%86%E7%B1%BB">分类</a>
+        
+          <a class="main-nav-link" href="/tags%20%20%20/%E6%A0%87%E7%AD%BE">标签</a>
+        
+          <a class="main-nav-link" href="/about%20%20%20/%E5%85%B3%E4%BA%8E">关于</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://blob.itmarte.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-sql/认识MYSQL" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/04/15/sql/%E8%AE%A4%E8%AF%86MYSQL/" class="article-date">
+  <time datetime="2020-04-15T12:05:46.000Z" itemprop="datePublished">2020-04-15</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>►<a class="article-category-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySQL/">MySQL</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      认识MySQL
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="什么是MySQL"><a href="#什么是MySQL" class="headerlink" title="什么是MySQL?"></a>什么是MySQL?</h3><p>MySQL 是一种关系型数据库，在Java企业级开发中非常常用，因为 MySQL 是开源免费的，并且方便扩展。阿里巴巴数据库系统也大量用到了 MySQL，因此它的稳定性是有保障的。MySQL是开放源代码的，因此任何人都可以在 GPL(General Public License) 的许可下下载并根据个性化的需要对其进行修改。MySQL的默认端口号是<strong>3306</strong>。</p>
+<h3 id="存储引擎"><a href="#存储引擎" class="headerlink" title="存储引擎"></a>存储引擎</h3><h4 id="一些常用命令"><a href="#一些常用命令" class="headerlink" title="一些常用命令"></a>一些常用命令</h4><p><strong>查看MySQL提供的所有存储引擎</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show engines;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/96e65732e706e67.png" alt="查看MySQL提供的所有存储引擎"></p>
+<p>从上图我们可以查看出 MySQL 当前默认的存储引擎是InnoDB,并且在5.7版本所有的存储引擎中只有 InnoDB 是事务性存储引擎，也就是说只有 InnoDB 支持事务。</p>
+<p><strong>查看MySQL当前默认的存储引擎</strong></p>
+<p>我们也可以通过下面的命令查看默认的存储引擎。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like &#39;%storage_engine%&#39;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>查看表的存储引擎</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show table status like &quot;table_name&quot; ;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/20200702382545352.png" alt="查看表的存储引擎"></p>
+<h4 id="MyISAM和InnoDB区别"><a href="#MyISAM和InnoDB区别" class="headerlink" title="MyISAM和InnoDB区别"></a>MyISAM和InnoDB区别</h4><p>MyISAM是MySQL的默认数据库引擎（5.5版之前）。虽然性能极佳，而且提供了大量的特性，包括全文索引、压缩、空间函数等，但MyISAM不支持事务和行级锁，而且最大的缺陷就是崩溃后无法安全恢复。不过，5.5版本之后，MySQL引入了InnoDB（事务性数据库引擎），MySQL 5.5版本后默认的存储引擎为InnoDB。</p>
+<p>大多数时候我们使用的都是 InnoDB 存储引擎，但是在某些情况下使用 MyISAM 也是合适的比如读密集的情况下。（如果你不介意 MyISAM 崩溃恢复问题的话）。</p>
+<p><strong>两者的对比：</strong></p>
+<ol>
+<li><strong>是否支持行级锁</strong> : MyISAM 只有表级锁(table-level locking)，而InnoDB 支持行级锁(row-level locking)和表级锁,默认为行级锁。</li>
+<li><strong>是否支持事务和崩溃后的安全恢复： MyISAM</strong> 强调的是性能，每次查询具有原子性,其执行速度比InnoDB类型更快，但是不提供事务支持。但是<strong>InnoDB</strong> 提供事务支持事务，外部键等高级数据库功能。 具有事务(commit)、回滚(rollback)和崩溃修复能力(crash recovery capabilities)的事务安全(transaction-safe (ACID compliant))型表。</li>
+<li><strong>是否支持外键：</strong> MyISAM不支持，而InnoDB支持。</li>
+<li><strong>是否支持MVCC</strong> ：仅 InnoDB 支持。应对高并发事务, MVCC比单纯的加锁更高效;MVCC只在 <code>READ COMMITTED</code> 和 <code>REPEATABLE READ</code> 两个隔离级别下工作;MVCC可以使用 乐观(optimistic)锁 和 悲观(pessimistic)锁来实现;各数据库中MVCC实现并不统一。推荐阅读：<a href="https://segmentfault.com/a/1190000012650596" target="_blank" rel="noopener">MySQL-InnoDB-MVCC多版本并发控制</a></li>
+<li>……</li>
+</ol>
+<p>《MySQL高性能》上面有一句话这样写到:</p>
+<blockquote>
+<p>不要轻易相信“MyISAM比InnoDB快”之类的经验之谈，这个结论往往不是绝对的。在很多我们已知场景中，InnoDB的速度都可以让MyISAM望尘莫及，尤其是用到了聚簇索引，或者需要访问的数据都可以放入内存的应用。</p>
+</blockquote>
+<p>一般情况下我们选择 InnoDB 都是没有问题的，但是某些情况下你并不在乎可扩展能力和并发能力，也不需要事务支持，也不在乎崩溃后的安全恢复问题的话，选择MyISAM也是一个不错的选择。但是一般情况下，我们都是需要考虑到这些问题的。</p>
+<h3 id="字符集及校对规则"><a href="#字符集及校对规则" class="headerlink" title="字符集及校对规则"></a>字符集及校对规则</h3><p>字符集指的是一种从二进制编码到某类字符符号的映射。校对规则则是指某种字符集下的排序规则。MySQL中每一种字符集都会对应一系列的校对规则。</p>
+<p>MySQL采用的是类似继承的方式指定字符集的默认值，每个数据库以及每张数据表都有自己的默认值，他们逐层继承。比如：某个库中所有表的默认字符集将是该数据库所指定的字符集（这些表在没有指定字符集的情况下，才会采用默认字符集） PS：整理自《Java工程师修炼之道》</p>
+<p>详细内容可以参考： <a href="https://www.cnblogs.com/geaozhang/p/6724393.html#MySQLyuzifuji" target="_blank" rel="noopener">MySQL字符集及校对规则的理解</a></p>
+<h3 id="索引"><a href="#索引" class="headerlink" title="索引"></a>索引</h3><p>MySQL索引使用的数据结构主要有<strong>BTree索引</strong> 和 <strong>哈希索引</strong> 。对于哈希索引来说，底层的数据结构就是哈希表，因此在绝大多数需求为单条记录查询的时候，可以选择哈希索引，查询性能最快；其余大部分场景，建议选择BTree索引。</p>
+<p>MySQL的BTree索引使用的是B树中的B+Tree，但对于主要的两种存储引擎的实现方式是不同的。</p>
+<ul>
+<li><strong>MyISAM:</strong> B+Tree叶节点的data域存放的是数据记录的地址。在索引检索的时候，首先按照B+Tree搜索算法搜索索引，如果指定的Key存在，则取出其 data 域的值，然后以 data 域的值为地址读取相应的数据记录。这被称为“非聚簇索引”。</li>
+<li><strong>InnoDB:</strong> 其数据文件本身就是索引文件。相比MyISAM，索引文件和数据文件是分离的，其表数据文件本身就是按B+Tree组织的一个索引结构，树的叶节点data域保存了完整的数据记录。这个索引的key是数据表的主键，因此InnoDB表数据文件本身就是主索引。这被称为“聚簇索引（或聚集索引）”。而其余的索引都作为辅助索引，辅助索引的data域存储相应记录主键的值而不是地址，这也是和MyISAM不同的地方。<strong>在根据主索引搜索时，直接找到key所在的节点即可取出数据；在根据辅助索引查找时，则需要先取出主键的值，再走一遍主索引。</strong> <strong>因此，在设计表的时候，不建议使用过长的字段作为主键，也不建议使用非单调的字段作为主键，这样会造成主索引频繁分裂。</strong> PS：整理自《Java工程师修炼之道》</li>
+</ul>
+<p><strong>更多关于索引的内容可以查看文档首页MySQL目录下关于索引的详细总结。</strong></p>
+<h3 id="查询缓存的使用"><a href="#查询缓存的使用" class="headerlink" title="查询缓存的使用"></a>查询缓存的使用</h3><blockquote>
+<p>执行查询语句的时候，会先查询缓存。不过，MySQL 8.0 版本后移除，因为这个功能不太实用</p>
+</blockquote>
+<p>my.cnf加入以下配置，重启MySQL开启查询缓存</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">query_cache_type&#x3D;1</span><br><span class="line">query_cache_size&#x3D;600000</span><br></pre></td></tr></table></figure>
+
+<p>MySQL执行以下命令也可以开启查询缓存</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">set global  query_cache_type&#x3D;1;</span><br><span class="line">set global  query_cache_size&#x3D;600000;</span><br></pre></td></tr></table></figure>
+
+<p>如上，<strong>开启查询缓存后在同样的查询条件以及数据情况下，会直接在缓存中返回结果</strong>。这里的查询条件包括查询本身、当前要查询的数据库、客户端协议版本号等一些可能影响结果的信息。因此任何两个查询在任何字符上的不同都会导致缓存不命中。此外，如果查询中包含任何用户自定义函数、存储函数、用户变量、临时表、MySQL库中的系统表，其查询结果也不会被缓存。</p>
+<p>缓存建立之后，MySQL的查询缓存系统会跟踪查询中涉及的每张表，如果这些表（数据或结构）发生变化，那么和这张表相关的所有缓存数据都将失效。</p>
+<p><strong>缓存虽然能够提升数据库的查询性能，但是缓存同时也带来了额外的开销，每次查询后都要做一次缓存操作，失效后还要销毁。</strong> 因此，开启缓存查询要谨慎，尤其对于写密集的应用来说更是如此。如果开启，要注意合理控制缓存空间大小，一般来说其大小设置为几十MB比较合适。此外，<strong>还可以通过sql_cache和sql_no_cache来控制某个查询语句是否需要缓存：</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select sql_no_cache count(*) from usr;</span><br></pre></td></tr></table></figure>
+
+<h3 id="什么是事务"><a href="#什么是事务" class="headerlink" title="什么是事务?"></a>什么是事务?</h3><p><strong>事务是逻辑上的一组操作，要么都执行，要么都不执行。</strong></p>
+<p>事务最经典也经常被拿出来说例子就是转账了。假如小明要给小红转账1000元，这个转账会涉及到两个关键操作就是：将小明的余额减少1000元，将小红的余额增加1000元。万一在这两个操作之间突然出现错误比如银行系统崩溃，导致小明余额减少而小红的余额没有增加，这样就不对了。事务就是保证这两个关键操作要么都成功，要么都要失败。</p>
+<h3 id="事物的四大特性-ACID"><a href="#事物的四大特性-ACID" class="headerlink" title="事物的四大特性(ACID)"></a>事物的四大特性(ACID)</h3><p><img src="/images/125453725.png" alt="事物的特性"></p>
+<ol>
+<li><strong>原子性（Atomicity）：</strong> 事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；</li>
+<li><strong>一致性（Consistency）：</strong> 执行事务前后，数据保持一致，多个事务对同一个数据读取的结果是相同的；</li>
+<li><strong>隔离性（Isolation）：</strong> 并发访问数据库时，一个用户的事务不被其他事务所干扰，各并发事务之间数据库是独立的；</li>
+<li><strong>持久性（Durability）：</strong> 一个事务被提交之后。它对数据库中数据的改变是持久的，即使数据库发生故障也不应该对其有任何影响。</li>
+</ol>
+<h3 id="并发事务带来哪些问题"><a href="#并发事务带来哪些问题" class="headerlink" title="并发事务带来哪些问题?"></a>并发事务带来哪些问题?</h3><p>在典型的应用程序中，多个事务并发运行，经常会操作相同的数据来完成各自的任务（多个用户对同一数据进行操作）。并发虽然是必须的，但可能会导致以下的问题。</p>
+<ul>
+<li><strong>脏读（Dirty read）:</strong> 当一个事务正在访问数据并且对数据进行了修改，而这种修改还没有提交到数据库中，这时另外一个事务也访问了这个数据，然后使用了这个数据。因为这个数据是还没有提交的数据，那么另外一个事务读到的这个数据是“脏数据”，依据“脏数据”所做的操作可能是不正确的。</li>
+<li><strong>丢失修改（Lost to modify）:</strong> 指在一个事务读取一个数据时，另外一个事务也访问了该数据，那么在第一个事务中修改了这个数据后，第二个事务也修改了这个数据。这样第一个事务内的修改结果就被丢失，因此称为丢失修改。 例如：事务1读取某表中的数据A=20，事务2也读取A=20，事务1修改A=A-1，事务2也修改A=A-1，最终结果A=19，事务1的修改被丢失。</li>
+<li><strong>不可重复读（Unrepeatableread）:</strong> 指在一个事务内多次读同一数据。在这个事务还没有结束时，另一个事务也访问该数据。那么，在第一个事务中的两次读数据之间，由于第二个事务的修改导致第一个事务两次读取的数据可能不太一样。这就发生了在一个事务内两次读到的数据是不一样的情况，因此称为不可重复读。</li>
+<li><strong>幻读（Phantom read）:</strong> 幻读与不可重复读类似。它发生在一个事务（T1）读取了几行数据，接着另一个并发事务（T2）插入了一些数据时。在随后的查询中，第一个事务（T1）就会发现多了一些原本不存在的记录，就好像发生了幻觉一样，所以称为幻读。</li>
+</ul>
+<p><strong>不可重复读和幻读区别：</strong></p>
+<p>不可重复读的重点是修改比如多次读取一条记录发现其中某些列的值被修改，幻读的重点在于新增或者删除比如多次读取一条记录发现记录增多或减少了。</p>
+<h3 id="事务隔离级别有哪些-MySQL的默认隔离级别是"><a href="#事务隔离级别有哪些-MySQL的默认隔离级别是" class="headerlink" title="事务隔离级别有哪些?MySQL的默认隔离级别是?"></a>事务隔离级别有哪些?MySQL的默认隔离级别是?</h3><p><strong>SQL 标准定义了四个隔离级别：</strong></p>
+<ul>
+<li><strong>READ-UNCOMMITTED(读取未提交)：</strong> 最低的隔离级别，允许读取尚未提交的数据变更，<strong>可能会导致脏读、幻读或不可重复读</strong>。</li>
+<li><strong>READ-COMMITTED(读取已提交)：</strong> 允许读取并发事务已经提交的数据，<strong>可以阻止脏读，但是幻读或不可重复读仍有可能发生</strong>。</li>
+<li><strong>REPEATABLE-READ(可重复读)：</strong> 对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，<strong>可以阻止脏读和不可重复读，但幻读仍有可能发生</strong>。</li>
+<li><strong>SERIALIZABLE(可串行化)：</strong> 最高的隔离级别，完全服从ACID的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，<strong>该级别可以防止脏读、不可重复读以及幻读</strong>。</li>
+</ul>
+<hr>
+<table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th>脏读</th>
+<th>不可重复读</th>
+<th>幻影读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>READ-UNCOMMITTED</td>
+<td>√</td>
+<td>√</td>
+<td>√</td>
+</tr>
+<tr>
+<td>READ-COMMITTED</td>
+<td>×</td>
+<td>√</td>
+<td>√</td>
+</tr>
+<tr>
+<td>REPEATABLE-READ</td>
+<td>×</td>
+<td>×</td>
+<td>√</td>
+</tr>
+<tr>
+<td>SERIALIZABLE</td>
+<td>×</td>
+<td>×</td>
+<td>×</td>
+</tr>
+</tbody></table>
+<p>MySQL InnoDB 存储引擎的默认支持的隔离级别是 <strong>REPEATABLE-READ（可重读）</strong>。我们可以通过<code>SELECT @@tx_isolation;</code>命令来查看</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SELECT @@tx_isolation;</span><br><span class="line">+-----------------+</span><br><span class="line">| @@tx_isolation  |</span><br><span class="line">+-----------------+</span><br><span class="line">| REPEATABLE-READ |</span><br><span class="line">+-----------------+</span><br></pre></td></tr></table></figure>
+
+<p>这里需要注意的是：与 SQL 标准不同的地方在于 InnoDB 存储引擎在 <strong>REPEATABLE-READ（可重读）</strong> 事务隔离级别下使用的是Next-Key Lock 锁算法，因此可以避免幻读的产生，这与其他数据库系统(如 SQL Server) 是不同的。所以说InnoDB 存储引擎的默认支持的隔离级别是 <strong>REPEATABLE-READ（可重读）</strong> 已经可以完全保证事务的隔离性要求，即达到了 SQL标准的 <strong>SERIALIZABLE(可串行化)</strong> 隔离级别。因为隔离级别越低，事务请求的锁越少，所以大部分数据库系统的隔离级别都是 <strong>READ-COMMITTED(读取提交内容)</strong> ，但是你要知道的是InnoDB 存储引擎默认使用 <strong>REPEAaTABLE-READ（可重读）</strong> 并不会有任何性能损失。</p>
+<p>InnoDB 存储引擎在 <strong>分布式事务</strong> 的情况下一般会用到 <strong>SERIALIZABLE(可串行化)</strong> 隔离级别。</p>
+<h3 id="锁机制与InnoDB锁算法"><a href="#锁机制与InnoDB锁算法" class="headerlink" title="锁机制与InnoDB锁算法"></a>锁机制与InnoDB锁算法</h3><p><strong>MyISAM和InnoDB存储引擎使用的锁：</strong></p>
+<ul>
+<li>MyISAM采用表级锁(table-level locking)。</li>
+<li>InnoDB支持行级锁(row-level locking)和表级锁,默认为行级锁</li>
+</ul>
+<p><strong>表级锁和行级锁对比：</strong></p>
+<ul>
+<li><strong>表级锁：</strong> MySQL中锁定 <strong>粒度最大</strong> 的一种锁，对当前操作的整张表加锁，实现简单，资源消耗也比较少，加锁快，不会出现死锁。其锁定粒度最大，触发锁冲突的概率最高，并发度最低，MyISAM和 InnoDB引擎都支持表级锁。</li>
+<li><strong>行级锁：</strong> MySQL中锁定 <strong>粒度最小</strong> 的一种锁，只针对当前操作的行进行加锁。 行级锁能大大减少数据库操作的冲突。其加锁粒度最小，并发度高，但加锁的开销也最大，加锁慢，会出现死锁。</li>
+</ul>
+<p>详细内容可以参考： MySQL锁机制简单了解一下：<a href="https://blog.csdn.net/qq_34337272/article/details/80611486" target="_blank" rel="noopener">https://blog.csdn.net/qq_34337272/article/details/80611486</a></p>
+<p><strong>InnoDB存储引擎的锁的算法有三种：</strong></p>
+<ul>
+<li>Record lock：单个行记录上的锁</li>
+<li>Gap lock：间隙锁，锁定一个范围，不包括记录本身</li>
+<li>Next-key lock：record+gap 锁定一个范围，包含记录本身</li>
+</ul>
+<p><strong>相关知识点：</strong></p>
+<ol>
+<li>innodb对于行的查询使用next-key lock</li>
+<li>Next-locking keying为了解决Phantom Problem幻读问题</li>
+<li>当查询的索引含有唯一属性时，将next-key lock降级为record key</li>
+<li>Gap锁设计的目的是为了阻止多个事务将记录插入到同一范围内，而这会导致幻读问题的产生</li>
+<li>有两种方式显式关闭gap锁：（除了外键约束和唯一性检查外，其余情况仅使用record lock） A. 将事务隔离级别设置为RC B. 将参数innodb_locks_unsafe_for_binlog设置为1</li>
+</ol>
+<h3 id="大表优化"><a href="#大表优化" class="headerlink" title="大表优化"></a>大表优化</h3><p>当MySQL单表记录数过大时，数据库的CRUD性能会明显下降，一些常见的优化措施如下：</p>
+<h4 id="1-限定数据的范围"><a href="#1-限定数据的范围" class="headerlink" title="1. 限定数据的范围"></a>1. 限定数据的范围</h4><p>务必禁止不带任何限制数据范围条件的查询语句。比如：我们当用户在查询订单历史的时候，我们可以控制在一个月的范围内；</p>
+<h4 id="2-读-写分离"><a href="#2-读-写分离" class="headerlink" title="2. 读/写分离"></a>2. 读/写分离</h4><p>经典的数据库拆分方案，主库负责写，从库负责读；</p>
+<h4 id="3-垂直分区"><a href="#3-垂直分区" class="headerlink" title="3. 垂直分区"></a>3. 垂直分区</h4><p><strong>根据数据库里面数据表的相关性进行拆分。</strong> 例如，用户表中既有用户的登录信息又有用户的基本信息，可以将用户表拆分成两个单独的表，甚至放到单独的库做分库。</p>
+<p><strong>简单来说垂直拆分是指数据表列的拆分，把一张列比较多的表拆分为多张表。</strong> 如下图所示，这样来说大家应该就更容易理解了。</p>
+<p><img src="/images/25453525.png" alt="数据库垂直分区"></p>
+<ul>
+<li><strong>垂直拆分的优点：</strong> 可以使得列数据变小，在查询时减少读取的Block数，减少I/O次数。此外，垂直分区可以简化表的结构，易于维护。</li>
+<li><strong>垂直拆分的缺点：</strong> 主键会出现冗余，需要管理冗余列，并会引起Join操作，可以通过在应用层进行Join来解决。此外，垂直分区会让事务变得更加复杂；</li>
+</ul>
+<h4 id="4-水平分区"><a href="#4-水平分区" class="headerlink" title="4. 水平分区"></a>4. 水平分区</h4><p><strong>保持数据表结构不变，通过某种策略存储数据分片。这样每一片数据分散到不同的表或者库中，达到了分布式的目的。 水平拆分可以支撑非常大的数据量。</strong></p>
+<p>水平拆分是指数据表行的拆分，表的行数超过200万行时，就会变慢，这时可以把一张的表的数据拆成多张表来存放。举个例子：我们可以将用户信息表拆分成多个用户信息表，这样就可以避免单一表数据量过大对性能造成影响。</p>
+<p><img src="/images/525453525.png" alt="数据库水平拆分"></p>
+<p>水平拆分可以支持非常大的数据量。需要注意的一点是：分表仅仅是解决了单一表数据过大的问题，但由于表的数据还是在同一台机器上，其实对于提升MySQL并发能力没有什么意义，所以 <strong>水平拆分最好分库</strong> 。</p>
+<p>水平拆分能够 <strong>支持非常大的数据量存储，应用端改造也少</strong>，但 <strong>分片事务难以解决</strong> ，跨节点Join性能较差，逻辑复杂。《Java工程师修炼之道》的作者推荐 <strong>尽量不要对数据进行分片，因为拆分会带来逻辑、部署、运维的各种复杂度</strong> ，一般的数据表在优化得当的情况下支撑千万以下的数据量是没有太大问题的。如果实在要分片，尽量选择客户端分片架构，这样可以减少一次和中间件的网络I/O。</p>
+<p><strong>下面补充一下数据库分片的两种常见方案：</strong></p>
+<ul>
+<li><strong>客户端代理：</strong> <strong>分片逻辑在应用端，封装在jar包中，通过修改或者封装JDBC层来实现。</strong> 当当网的 <strong>Sharding-JDBC</strong> 、阿里的TDDL是两种比较常用的实现。</li>
+<li><strong>中间件代理：</strong> <strong>在应用和数据中间加了一个代理层。分片逻辑统一维护在中间件服务中。</strong> 我们现在谈的 <strong>Mycat</strong> 、360的Atlas、网易的DDB等等都是这种架构的实现。</li>
+</ul>
+<p>详细内容可以参考： MySQL大表优化方案: <a href="https://segmentfault.com/a/1190000006158186" target="_blank" rel="noopener">https://segmentfault.com/a/1190000006158186</a></p>
+<h3 id="解释一下什么是池化设计思想。什么是数据库连接池-为什么需要数据库连接池"><a href="#解释一下什么是池化设计思想。什么是数据库连接池-为什么需要数据库连接池" class="headerlink" title="解释一下什么是池化设计思想。什么是数据库连接池?为什么需要数据库连接池?"></a>解释一下什么是池化设计思想。什么是数据库连接池?为什么需要数据库连接池?</h3><p>池化设计应该不是一个新名词。我们常见的如java线程池、jdbc连接池、redis连接池等就是这类设计的代表实现。这种设计会初始预设资源，解决的问题就是抵消每次获取资源的消耗，如创建线程的开销，获取远程连接的开销等。就好比你去食堂打饭，打饭的大妈会先把饭盛好几份放那里，你来了就直接拿着饭盒加菜即可，不用再临时又盛饭又打菜，效率就高了。除了初始化资源，池化设计还包括如下这些特征：池子的初始值、池子的活跃值、池子的最大值等，这些特征可以直接映射到java线程池和数据库连接池的成员属性中。这篇文章对<a href="https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485679&idx=1&sn=57dbca8c9ad49e1f3968ecff04a4f735&chksm=cea24724f9d5ce3212292fac291234a760c99c0960b5430d714269efe33554730b5f71208582&token=1141994790&lang=zh_CN#rd" target="_blank" rel="noopener">池化设计思想</a>介绍的还不错，直接复制过来，避免重复造轮子了。</p>
+<p>数据库连接本质就是一个 socket 的连接。数据库服务端还要维护一些缓存和用户权限信息之类的 所以占用了一些内存。我们可以把数据库连接池是看做是维护的数据库连接的缓存，以便将来需要对数据库的请求时可以重用这些连接。为每个用户打开和维护数据库连接，尤其是对动态数据库驱动的网站应用程序的请求，既昂贵又浪费资源。<strong>在连接池中，创建连接后，将其放置在池中，并再次使用它，因此不必建立新的连接。如果使用了所有连接，则会建立一个新连接并将其添加到池中</strong>。 连接池还减少了用户必须等待建立与数据库的连接的时间。</p>
+<h3 id="分库分表之后-id-主键如何处理？"><a href="#分库分表之后-id-主键如何处理？" class="headerlink" title="分库分表之后,id 主键如何处理？"></a>分库分表之后,id 主键如何处理？</h3><p>因为要是分成多个表之后，每个表都是从 1 开始累加，这样是不对的，我们需要一个全局唯一的 id 来支持。</p>
+<p>生成全局 id 有下面这几种方式：</p>
+<ul>
+<li><strong>UUID</strong>：不适合作为主键，因为太长了，并且无序不可读，查询效率低。比较适合用于生成唯一的名字的标示比如文件的名字。</li>
+<li><strong>数据库自增 id</strong> : 两台数据库分别设置不同步长，生成不重复ID的策略来实现高可用。这种方式生成的 id 有序，但是需要独立部署数据库实例，成本高，还会有性能瓶颈。</li>
+<li><strong>利用 redis 生成 id :</strong> 性能比较好，灵活方便，不依赖于数据库。但是，引入了新的组件造成系统更加复杂，可用性降低，编码更加复杂，增加了系统成本。</li>
+<li><strong>Twitter的snowflake算法</strong> ：Github 地址：<a href="https://github.com/twitter-archive/snowflake%E3%80%82" target="_blank" rel="noopener">https://github.com/twitter-archive/snowflake。</a></li>
+<li><strong>美团的Leaf分布式ID生成系统</strong> ：Leaf 是美团开源的分布式ID生成器，能保证全局唯一性、趋势递增、单调递增、信息安全，里面也提到了几种分布式方案的对比，但也需要依赖关系数据库、Zookeeper等中间件。感觉还不错。美团技术团队的一篇文章：<a href="https://tech.meituan.com/2017/04/21/mt-leaf.html" target="_blank" rel="noopener">https://tech.meituan.com/2017/04/21/mt-leaf.html</a> 。</li>
+<li>……</li>
+</ul>
+<h3 id="一条SQL语句在MySQL中如何执行的"><a href="#一条SQL语句在MySQL中如何执行的" class="headerlink" title="一条SQL语句在MySQL中如何执行的"></a>一条SQL语句在MySQL中如何执行的</h3><p><a href="https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485097&idx=1&sn=84c89da477b1338bdf3e9fcd65514ac1&chksm=cea24962f9d5c074d8d3ff1ab04ee8f0d6486e3d015cfd783503685986485c11738ccb542ba7&token=79317275&lang=zh_CN#rd" target="_blank" rel="noopener">一条SQL语句在MySQL中如何执行的</a></p>
+<h3 id="MySQL高性能优化规范建议"><a href="#MySQL高性能优化规范建议" class="headerlink" title="MySQL高性能优化规范建议"></a>MySQL高性能优化规范建议</h3><p><a href="https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485117&idx=1&sn=92361755b7c3de488b415ec4c5f46d73&chksm=cea24976f9d5c060babe50c3747616cce63df5d50947903a262704988143c2eeb4069ae45420&token=79317275&lang=zh_CN#rd" target="_blank" rel="noopener">MySQL高性能优化规范建议</a></p>
+<h3 id="一条SQL语句执行得很慢的原因有哪些？"><a href="#一条SQL语句执行得很慢的原因有哪些？" class="headerlink" title="一条SQL语句执行得很慢的原因有哪些？"></a>一条SQL语句执行得很慢的原因有哪些？</h3><p><a href="https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485185&idx=1&sn=66ef08b4ab6af5757792223a83fc0d45&chksm=cea248caf9d5c1dc72ec8a281ec16aa3ec3e8066dbb252e27362438a26c33fbe842b0e0adf47&token=79317275&lang=zh_CN#rd" target="_blank" rel="noopener">腾讯面试：一条SQL语句执行得很慢的原因有哪些？—不看后悔系列</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://blob.itmarte.com/2020/04/15/sql/%E8%AE%A4%E8%AF%86MYSQL/" data-id="ckcbaj7ls005pvgja5k1x7s5j" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/04/15/spring/spring/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          spring
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/04/15/sql/sql/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">sql</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/">ORM</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/ORM/orm/">orm</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/">java</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/IO-NIO/">IO/NIO</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/">collection</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/">queue</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/collection/queue/disruptor/">disruptor</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/">concurrent</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/concurrent/AQS/">AQS</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/j2ee/">j2ee</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jdk8/">jdk8</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm/">jvm</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/jvm%E5%B7%A5%E5%85%B7/">jvm工具</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/">memory</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/memory/garbage/">garbage</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/proxy/">proxy</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/read-line/">read line</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/schedule/">schedule</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/">thread</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread/fork-join/">fork/join</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/java/thread-pool/">thread-pool</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/">linux</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/linux/linux/">linux</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/linux/openssl/">openssl</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/spring/">spring</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/spring/spring/">spring</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/middleware/">middleware</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/">分布式与微服务</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/dubbo%E9%85%8D%E7%BD%AE/">dubbo配置</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/microservices/">microservices</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/">包管理</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%85%E7%AE%A1%E7%90%86/packageManager/">packageManager</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/">区块链</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%8C%BA%E5%9D%97%E9%93%BE/blockChina/">blockChina</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySQL/">MySQL</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySql/">MySql</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/MySql/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/">MVCC多版本并发控制</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/sql/">sql</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">分库分表方案</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/%E7%B4%A2%E5%BC%95/">索引</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/">数据结构与算法</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/algorithms/">algorithms</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/">服务器</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%9C%8D%E5%8A%A1%E5%99%A8/server/">server</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/">项目</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/Open-API/">Open API</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E9%A1%B9%E7%9B%AE/project/">project</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/" rel="tag">MVCC多版本并发控制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySql/" rel="tag">MySql</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ORM/" rel="tag">ORM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ThreadPoolExecutor/" rel="tag">ThreadPoolExecutor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/b-tree/" rel="tag">b+ tree</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">cglib 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/collection/" rel="tag">collection</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/concurrent/" rel="tag">concurrent</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/disruptor/" rel="tag">disruptor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/dubbo-%E9%85%8D%E7%BD%AE/" rel="tag">dubbo 配置</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/fork-join/" rel="tag">fork/join</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" rel="tag">function/函数式编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/garbage/" rel="tag">garbage</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/io/" rel="tag">io</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/javassist/" rel="tag">javassist</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" rel="tag">jdk 动态代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jdk8/" rel="tag">jdk8</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/jvm%E5%B7%A5%E5%85%B7/" rel="tag">jvm工具</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/lambda/" rel="tag">lambda</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/memory/" rel="tag">memory</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/nio/" rel="tag">nio</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/openssl/" rel="tag">openssl</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/proxy/" rel="tag">proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/schedule/" rel="tag">schedule</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/synchronized-lock/" rel="tag">synchronized/lock</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread/" rel="tag">thread</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/thread-pool/" rel="tag">thread-pool</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" rel="tag">中间件</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" rel="tag">分布式与微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" rel="tag">分库分表方案</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" rel="tag">包管理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" rel="tag">区块链</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" rel="tag">数据结构与算法</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag">项目</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/AQS/" style="font-size: 10px;">AQS</a> <a href="/tags/MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/" style="font-size: 10px;">MVCC多版本并发控制</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/MySql/" style="font-size: 10px;">MySql</a> <a href="/tags/ORM/" style="font-size: 10px;">ORM</a> <a href="/tags/ThreadPoolExecutor/" style="font-size: 12.5px;">ThreadPoolExecutor</a> <a href="/tags/b-tree/" style="font-size: 10px;">b tree</a> <a href="/tags/b-tree/" style="font-size: 10px;">b+ tree</a> <a href="/tags/cglib-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">cglib 动态代理</a> <a href="/tags/collection/" style="font-size: 10px;">collection</a> <a href="/tags/concurrent/" style="font-size: 10px;">concurrent</a> <a href="/tags/disruptor/" style="font-size: 10px;">disruptor</a> <a href="/tags/dubbo-%E9%85%8D%E7%BD%AE/" style="font-size: 10px;">dubbo 配置</a> <a href="/tags/fork-join/" style="font-size: 12.5px;">fork/join</a> <a href="/tags/function-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">function/函数式编程</a> <a href="/tags/garbage/" style="font-size: 10px;">garbage</a> <a href="/tags/io/" style="font-size: 12.5px;">io</a> <a href="/tags/java/" style="font-size: 20px;">java</a> <a href="/tags/javassist/" style="font-size: 10px;">javassist</a> <a href="/tags/jdk-%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" style="font-size: 10px;">jdk 动态代理</a> <a href="/tags/jdk8/" style="font-size: 10px;">jdk8</a> <a href="/tags/jvm%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">jvm工具</a> <a href="/tags/lambda/" style="font-size: 10px;">lambda</a> <a href="/tags/linux/" style="font-size: 12.5px;">linux</a> <a href="/tags/memory/" style="font-size: 12.5px;">memory</a> <a href="/tags/nio/" style="font-size: 12.5px;">nio</a> <a href="/tags/openssl/" style="font-size: 10px;">openssl</a> <a href="/tags/proxy/" style="font-size: 10px;">proxy</a> <a href="/tags/schedule/" style="font-size: 15px;">schedule</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/synchronized-lock/" style="font-size: 12.5px;">synchronized/lock</a> <a href="/tags/thread/" style="font-size: 12.5px;">thread</a> <a href="/tags/thread-pool/" style="font-size: 10px;">thread-pool</a> <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="font-size: 10px;">中间件</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%8E%E5%BE%AE%E6%9C%8D%E5%8A%A1/" style="font-size: 12.5px;">分布式与微服务</a> <a href="/tags/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/" style="font-size: 10px;">分库分表方案</a> <a href="/tags/%E5%8C%85%E7%AE%A1%E7%90%86/" style="font-size: 10px;">包管理</a> <a href="/tags/%E5%8C%BA%E5%9D%97%E9%93%BE/" style="font-size: 10px;">区块链</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 17.5px;">数据库</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" style="font-size: 10px;">数据结构与算法</a> <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" style="font-size: 10px;">服务器</a> <a href="/tags/%E9%98%9F%E5%88%97/" style="font-size: 10px;">队列</a> <a href="/tags/%E9%A1%B9%E7%9B%AE/" style="font-size: 12.5px;">项目</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/07/02/sql/MySQL-InnoDB-MVCC%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6/">MySQL-InnoDB-MVCC多版本并发控制</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/01/linux/openssl%20%E7%94%9F%E4%BA%A7RSA%E5%AF%86%E9%92%A5%E5%AF%B9/">RSA加解密钥对生成</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/java/JDK%20%E7%9B%91%E6%8E%A7%E5%92%8C%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E5%B7%A5%E5%85%B7%E6%80%BB%E7%BB%93/">JDK 监控和故障处理工具总结</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/sql/Mysql%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%96%B9%E6%A1%88/">\[转\]Mysql分库分表方案</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/04/microservices/dubbo%E8%BF%9E%E6%8E%A5%E6%95%B0%E9%85%8D%E7%BD%AE%E5%BC%95%E5%8F%91%E7%9A%84%E9%97%AE%E9%A2%98/">dubbo 连接数配置导致连接爆发</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 marte<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">主页</a>
+  
+    <a href="/archives" class="mobile-nav-link">归档</a>
+  
+    <a href="/categories%20/%E5%88%86%E7%B1%BB" class="mobile-nav-link">分类</a>
+  
+    <a href="/tags%20%20%20/%E6%A0%87%E7%AD%BE" class="mobile-nav-link">标签</a>
+  
+    <a href="/about%20%20%20/%E5%85%B3%E4%BA%8E" class="mobile-nav-link">关于</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
